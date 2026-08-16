@@ -52,7 +52,7 @@ export const setRole = adminMutation({
     if (args.userId === ctx.user._id) {
       throw new ConvexError("You cannot change your own role");
     }
-    const user = await ctx.db.get(args.userId);
+    const user = await ctx.db.get("users", args.userId);
     if (!user) {
       throw new ConvexError("User not found");
     }
@@ -62,7 +62,7 @@ export const setRole = adminMutation({
         throw new ConvexError("Keep at least one admin");
       }
     }
-    await ctx.db.patch(args.userId, { role: args.role });
+    await ctx.db.patch("users", args.userId, { role: args.role });
     return null;
   },
 });
@@ -76,7 +76,7 @@ export const updateStaff = adminMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const user = await ctx.db.get(args.userId);
+    const user = await ctx.db.get("users", args.userId);
     if (!user) {
       throw new ConvexError("User not found");
     }
@@ -113,10 +113,10 @@ export const updateStaff = adminMutation({
       if (taken) {
         throw new ConvexError("That login is already in use");
       }
-      await ctx.db.patch(account._id, { providerAccountId: parsed.accountId });
+      await ctx.db.patch("authAccounts", account._id, { providerAccountId: parsed.accountId });
     }
 
-    await ctx.db.patch(args.userId, {
+    await ctx.db.patch("users", args.userId, {
       name,
       email: parsed.email,
       phone: parsed.phone,
@@ -133,7 +133,7 @@ export const removeStaff = adminMutation({
     if (args.userId === ctx.user._id) {
       throw new ConvexError("You cannot remove your own account");
     }
-    const user = await ctx.db.get(args.userId);
+    const user = await ctx.db.get("users", args.userId);
     if (!user) {
       throw new ConvexError("User not found");
     }
@@ -175,7 +175,7 @@ export const getUserIdentifier = internalQuery({
     name: v.optional(v.string()),
   }),
   handler: async (ctx, args) => {
-    const user = await ctx.db.get(args.userId);
+    const user = await ctx.db.get("users", args.userId);
     if (!user) {
       throw new ConvexError("User not found");
     }

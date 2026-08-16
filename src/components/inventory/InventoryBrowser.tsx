@@ -2,7 +2,7 @@
 
 import { usePaginatedQuery, useQuery } from "convex/react";
 import { useLocale, useTranslations } from "next-intl";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/convex";
 import { formatOmr } from "@/lib/format";
 import { RangeSlider } from "./RangeSlider";
@@ -99,14 +99,15 @@ export function InventoryBrowser() {
     { initialNumItems: 9 },
   );
 
-  const cachedResults = useRef(results);
-  if (status !== "LoadingFirstPage" || results.length > 0) {
-    cachedResults.current = results;
+  const [cachedResults, setCachedResults] = useState(results);
+  const keepPrevious = status === "LoadingFirstPage" && results.length === 0;
+  if (!keepPrevious && cachedResults !== results) {
+    setCachedResults(results);
   }
 
-  const isFirstLoad = status === "LoadingFirstPage" && cachedResults.current.length === 0;
-  const isRefreshing = status === "LoadingFirstPage" && cachedResults.current.length > 0;
-  const visible = isFirstLoad ? [] : results.length > 0 ? results : cachedResults.current;
+  const isFirstLoad = keepPrevious && cachedResults.length === 0;
+  const isRefreshing = keepPrevious && cachedResults.length > 0;
+  const visible = keepPrevious ? cachedResults : results;
 
   return (
     <div>

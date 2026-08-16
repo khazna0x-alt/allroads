@@ -75,7 +75,7 @@ export async function nextStockCode(ctx: MutationCtx): Promise<string> {
 
   const next = (counter?.value ?? 1000) + 1;
   if (counter) {
-    await ctx.db.patch(counter._id, { value: next });
+    await ctx.db.patch("counters", counter._id, { value: next });
   } else {
     await ctx.db.insert("counters", { key: "stock", value: next });
   }

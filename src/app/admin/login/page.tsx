@@ -1,27 +1,33 @@
 "use client";
 
 import { useAuthActions } from "@convex-dev/auth/react";
-import { useConvexAuth } from "convex/react";
+import { useConvexAuth, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AdminButton, AdminField, GoldRule } from "@/components/admin/ui";
 import { Mark } from "@/components/brand/Mark";
+import { api } from "@/lib/convex";
+import { clearConvexAuthStorage } from "@/lib/convexAuthStorage";
 
 export default function AdminLoginPage() {
   const t = useTranslations("Admin.login");
-  const { signIn } = useAuthActions();
-  const { isAuthenticated } = useConvexAuth();
+  const tAccess = useTranslations("Admin");
+  const { signIn, signOut } = useAuthActions();
+  const { isAuthenticated, isLoading } = useConvexAuth();
+  const me = useQuery(api.staff.me, isLoading || !isAuthenticated ? "skip" : {});
   const router = useRouter();
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!me) {
       return;
     }
     router.replace("/admin");
-  }, [isAuthenticated, router]);
+  }, [me, router]);
+
+  const entering = pending && me !== null;
 
   return (
     <div className="admin-login-stage flex min-h-svh items-center justify-center px-4 py-20 sm:px-5">
@@ -36,16 +42,21 @@ export default function AdminLoginPage() {
           formData.set("flow", "signIn");
           setPending(true);
           setError("");
-          void signIn("password", formData)
+          void signOut()
+            .catch(() => undefined)
+            .then(() => {
+              clearConvexAuthStorage();
+              return signIn("password", formData);
+            })
             .then((result) => {
               if (result.signingIn) {
-                router.replace("/admin");
                 return;
               }
               setError(t("invalid"));
               setPending(false);
             })
             .catch(() => {
+              clearConvexAuthStorage();
               setError(t("invalid"));
               setPending(false);
             });
@@ -77,8 +88,13 @@ export default function AdminLoginPage() {
             {error}
           </p>
         ) : null}
-        <AdminButton type="submit" variant="primary" className="mt-6 w-full" disabled={pending}>
-          {pending ? t("entering") : t("enter")}
+        {isAuthenticated && me === null ? (
+          <p className="mt-3 text-sm text-[#f2c4c6]" role="alert">
+            {tAccess("noDeskAccess")}
+          </p>
+        ) : null}
+        <AdminButton type="submit" variant="primary" className="mt-6 w-full" disabled={entering}>
+          {entering ? t("entering") : t("enter")}
         </AdminButton>
       </form>
     </div>

@@ -15,7 +15,7 @@ export async function getCurrentUser(
     throw new ConvexError("Not authenticated");
   }
 
-  const user = await ctx.db.get(userId);
+  const user = await ctx.db.get("users", userId);
   if (!user) {
     throw new ConvexError("User not found");
   }
@@ -33,7 +33,7 @@ export async function getCurrentUserOrNull(
   if (userId === null) {
     return null;
   }
-  const user = await ctx.db.get(userId);
+  const user = await ctx.db.get("users", userId);
   if (!user || (user.role !== "admin" && user.role !== "editor")) {
     return null;
   }

@@ -535,7 +535,7 @@ export function parseCarType(carType: string): { make: string; model: string; tr
 }
 
 function splitModelTrim(make: string, rest: string): { make: string; model: string; trim?: string } {
-  let remaining = rest.replace(/\s+(19|20)\d{2}$/, "").trim();
+  const remaining = rest.replace(/\s+(19|20)\d{2}$/, "").trim();
   const upper = remaining.toUpperCase();
   const trimMarkers = [" FULL OPTION", " FULL OPT"];
   for (const marker of trimMarkers) {

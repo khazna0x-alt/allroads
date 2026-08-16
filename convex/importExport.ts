@@ -222,7 +222,7 @@ export const importVehicles = adminMutation({
           vin: payload.vin,
           excludeId: existing._id,
         });
-        await ctx.db.patch(existing._id, {
+        await ctx.db.patch("vehicles", existing._id, {
           ...payload,
           publishedAt:
             payload.status === "published"
@@ -245,7 +245,7 @@ export const importVehicles = adminMutation({
       const all = await ctx.db.query("vehicles").take(500);
       for (const vehicle of all) {
         if (!incomingCodes.has(vehicle.stockCode) && vehicle.status === "published") {
-          await ctx.db.patch(vehicle._id, {
+          await ctx.db.patch("vehicles", vehicle._id, {
             status: args.missingStrategy,
             updatedAt: now,
           });

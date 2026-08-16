@@ -2,7 +2,7 @@
 
 import { useMutation } from "convex/react";
 import { useLocale, useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { FieldLabel } from "@/components/forms/FieldLabel";
 import { Link } from "@/i18n/navigation";
 import { api, type Id } from "@/lib/convex";
@@ -18,11 +18,11 @@ export function InquiryForm({
   const nav = useTranslations("Nav");
   const locale = useLocale();
   const createInquiry = useMutation(api.inquiries.createInquiry);
-  const captcha = useMemo(() => {
+  const [captcha] = useState(() => {
     const a = Math.floor(Math.random() * 6) + 2;
     const b = Math.floor(Math.random() * 6) + 1;
     return { a, b, sum: a + b };
-  }, []);
+  });
   const [status, setStatus] = useState<"idle" | "ok" | "error">("idle");
   const [error, setError] = useState("");
 

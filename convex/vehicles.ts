@@ -52,7 +52,7 @@ export const getStaff = authedQuery({
   args: { vehicleId: v.id("vehicles") },
   returns: v.union(staffVehicleValidator, v.null()),
   handler: async (ctx, args) => {
-    const vehicle = await ctx.db.get(args.vehicleId);
+    const vehicle = await ctx.db.get("vehicles", args.vehicleId);
     if (!vehicle) {
       return null;
     }
@@ -133,7 +133,7 @@ export const update = authedMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const vehicle = await ctx.db.get(args.vehicleId);
+    const vehicle = await ctx.db.get("vehicles", args.vehicleId);
     if (!vehicle) {
       throw new ConvexError("Vehicle not found");
     }
@@ -145,7 +145,7 @@ export const update = authedMutation({
       excludeId: args.vehicleId,
     });
 
-    await ctx.db.patch(args.vehicleId, {
+    await ctx.db.patch("vehicles", args.vehicleId, {
       stockCode,
       slug: buildVehicleSlug({
         year: args.year,

@@ -40,9 +40,9 @@ export async function deleteStaffUser(
       .withIndex("accountId", (q) => q.eq("accountId", account._id))
       .collect();
     for (const code of codes) {
-      await ctx.db.delete(code._id);
+      await ctx.db.delete("authVerificationCodes", code._id);
     }
-    await ctx.db.delete(account._id);
+    await ctx.db.delete("authAccounts", account._id);
   }
 
   const sessions = await ctx.db
@@ -56,10 +56,10 @@ export async function deleteStaffUser(
       .withIndex("sessionId", (q) => q.eq("sessionId", session._id))
       .collect();
     for (const token of tokens) {
-      await ctx.db.delete(token._id);
+      await ctx.db.delete("authRefreshTokens", token._id);
     }
-    await ctx.db.delete(session._id);
+    await ctx.db.delete("authSessions", session._id);
   }
 
-  await ctx.db.delete(userId);
+  await ctx.db.delete("users", userId);
 }

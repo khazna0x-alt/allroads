@@ -18,7 +18,7 @@ export const attach = authedMutation({
   },
   returns: v.id("vehiclePhotos"),
   handler: async (ctx, args) => {
-    const vehicle = await ctx.db.get(args.vehicleId);
+    const vehicle = await ctx.db.get("vehicles", args.vehicleId);
     if (!vehicle) {
       throw new ConvexError("Vehicle not found");
     }
@@ -45,11 +45,11 @@ export const reorder = authedMutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     for (const [index, photoId] of args.photoIds.entries()) {
-      const photo = await ctx.db.get(photoId);
+      const photo = await ctx.db.get("vehiclePhotos", photoId);
       if (!photo) {
         throw new ConvexError("Photo not found");
       }
-      await ctx.db.patch(photoId, { sortOrder: index });
+      await ctx.db.patch("vehiclePhotos", photoId, { sortOrder: index });
     }
     return null;
   },
@@ -59,12 +59,12 @@ export const remove = authedMutation({
   args: { photoId: v.id("vehiclePhotos") },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const photo = await ctx.db.get(args.photoId);
+    const photo = await ctx.db.get("vehiclePhotos", args.photoId);
     if (!photo) {
       throw new ConvexError("Photo not found");
     }
     await ctx.storage.delete(photo.storageId);
-    await ctx.db.delete(args.photoId);
+    await ctx.db.delete("vehiclePhotos", args.photoId);
     return null;
   },
 });

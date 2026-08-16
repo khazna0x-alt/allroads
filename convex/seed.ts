@@ -227,7 +227,7 @@ export const seedSampleVehicles = internalMutation({
       .withIndex("by_key", (q) => q.eq("key", "stock"))
       .unique();
     if (counter) {
-      await ctx.db.patch(counter._id, { value: Math.max(counter.value, 1005) });
+      await ctx.db.patch("counters", counter._id, { value: Math.max(counter.value, 1005) });
     } else {
       await ctx.db.insert("counters", { key: "stock", value: 1005 });
     }
@@ -273,7 +273,7 @@ export const alignFeaturedExamples = internalMutation({
       .withIndex("by_stock_code", (q) => q.eq("stockCode", "AR-1004"))
       .unique();
     if (porsche && porsche.status !== "hidden") {
-      await ctx.db.patch(porsche._id, { status: "hidden", updatedAt: now });
+      await ctx.db.patch("vehicles", porsche._id, { status: "hidden", updatedAt: now });
     }
 
     const cruiser = await ctx.db
@@ -281,7 +281,7 @@ export const alignFeaturedExamples = internalMutation({
       .withIndex("by_stock_code", (q) => q.eq("stockCode", "AR-1003"))
       .unique();
     if (cruiser) {
-      await ctx.db.patch(cruiser._id, {
+      await ctx.db.patch("vehicles", cruiser._id, {
         exteriorColor: "Black",
         searchText: buildVehicleSearchText(cruiser),
         updatedAt: now,
@@ -295,7 +295,7 @@ export const alignFeaturedExamples = internalMutation({
     if (sport) {
       const titleAr = sport.titleAr;
       const titleEn = sport.titleEn;
-      await ctx.db.patch(sport._id, {
+      await ctx.db.patch("vehicles", sport._id, {
         exteriorColor: "Santorini Red",
         descriptionAr: "حضور ملكي وجاهزة للتسليم الفوري.",
         descriptionEn: "A regal presence ready for immediate delivery.",

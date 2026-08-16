@@ -20,12 +20,12 @@ export const getInquiry = internalQuery({
     v.null(),
   ),
   handler: async (ctx, args) => {
-    const inquiry = await ctx.db.get(args.inquiryId);
+    const inquiry = await ctx.db.get("inquiries", args.inquiryId);
     if (!inquiry) {
       return null;
     }
     const vehicle = inquiry.vehicleId
-      ? await ctx.db.get(inquiry.vehicleId)
+      ? await ctx.db.get("vehicles", inquiry.vehicleId)
       : null;
     return {
       _id: inquiry._id,
@@ -46,7 +46,7 @@ export const markSynced = internalMutation({
   args: { inquiryId: v.id("inquiries") },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.inquiryId, { hefflSyncedAt: Date.now() });
+    await ctx.db.patch("inquiries", args.inquiryId, { hefflSyncedAt: Date.now() });
     return null;
   },
 });
