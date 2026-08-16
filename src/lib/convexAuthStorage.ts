@@ -1,5 +1,8 @@
 import type { TokenStorage } from "@convex-dev/auth/react";
 
+const AUTH_STORAGE_GENERATION = "2026-08-16-matching-jwks";
+const AUTH_STORAGE_GENERATION_KEY = "__allroadsAuthStorageGeneration";
+
 function isPlaceholderRefreshToken(value: string | null | undefined) {
   return value === "dummy" || value == null || value.length === 0 || !value.includes("|");
 }
@@ -10,6 +13,11 @@ function isRefreshTokenKey(key: string) {
 
 export function discardPlaceholderAuthTokens() {
   if (typeof window === "undefined") {
+    return;
+  }
+  if (window.localStorage.getItem(AUTH_STORAGE_GENERATION_KEY) !== AUTH_STORAGE_GENERATION) {
+    clearConvexAuthStorage();
+    window.localStorage.setItem(AUTH_STORAGE_GENERATION_KEY, AUTH_STORAGE_GENERATION);
     return;
   }
   const keys: string[] = [];
