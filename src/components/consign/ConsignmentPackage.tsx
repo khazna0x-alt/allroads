@@ -1,5 +1,4 @@
 import { getTranslations } from "next-intl/server";
-import { ContractDownloadLink } from "./ContractDownloadLink";
 
 const careKeys = ["dust", "polish", "engine", "parking"] as const;
 const marketingKeys = ["session", "social", "campaigns", "display"] as const;
@@ -69,16 +68,6 @@ export async function ConsignmentPackage() {
             <p className="mt-2 font-display text-2xl text-[var(--sand-bright)]">{t("compare.packagePrice")}</p>
           </div>
         </div>
-      </section>
-
-      <section className="flex flex-col gap-4 border border-[var(--crimson)]/40 bg-[var(--ink-soft)] p-5 sm:flex-row sm:items-center sm:justify-between sm:p-7">
-        <div className="min-w-0">
-          <h2 className="font-display text-2xl">{t("downloadTitle")}</h2>
-          <p className="mt-2 text-sm leading-7 text-gray-400">{t("downloadBody")}</p>
-        </div>
-        <ContractDownloadLink className="btn-primary shrink-0 px-6">
-          {t("downloadContract")}
-        </ContractDownloadLink>
       </section>
     </div>
   );

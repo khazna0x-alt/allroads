@@ -24,7 +24,6 @@ export const brand = {
   fridayEn: "Friday: Closed",
   crNumber: "1500803",
   credit: "Dynamic Business Solutions",
-  contractPdf: "/vehicle-deposit-contract.pdf",
 } as const;
 
 export const inquirySubjects = [

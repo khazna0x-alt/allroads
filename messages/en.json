@@ -98,7 +98,8 @@
     "electric": "Electric",
     "automatic": "Automatic",
     "manual": "Manual",
-    "loadMore": "Load more"
+    "loadMore": "Load more",
+    "gallery": "Vehicle photos"
   },
   "Contact": {
     "eyebrow": "Get in Touch",
@@ -124,9 +125,8 @@
     "consign": "Consign Vehicle for Sale",
     "displayed": "Inquire about Displayed Car",
     "consignCtaTitle": "Consign a vehicle",
-    "consignCtaBody": "Download the deposit contract, fill it, and submit it with your vehicle details on the consignment page.",
-    "consignCta": "Open consignment form",
-    "downloadContract": "Download deposit contract"
+    "consignCtaBody": "Send your vehicle details on the consignment page. The showroom reviews every listing before it is published.",
+    "consignCta": "Open consignment form"
   },
   "Consign": {
     "eyebrow": "VIP package",
@@ -188,9 +188,6 @@
       "packagePriceLabel": "Showroom package",
       "packagePrice": "Only 25 rials per month"
     },
-    "downloadTitle": "Vehicle deposit contract",
-    "downloadBody": "Download the form, complete it, then attach the filled copy when you submit your request.",
-    "downloadContract": "Download deposit contract",
     "formTitle": "Submit a consignment request",
     "ownerName": "Owner name",
     "ownerPhone": "Owner phone",
@@ -200,17 +197,7 @@
     "price": "Expected price (OMR)",
     "mileage": "Mileage (km)",
     "notes": "Notes about the car",
-    "uploadLabel": "Completed contract (PDF or image)",
-    "uploadHint": "Optional. Download the deposit contract, fill it, then attach the completed file here. Staff only can open it.",
-    "attachAction": "Attach / Upload",
-    "dropHint": "PDF or image — tap Attach / Upload or drop the file here",
-    "replaceFile": "Replace file",
-    "removeFile": "Remove",
-    "selectedFile": "Selected: {name}",
-    "fileTooLarge": "File is too large (maximum 15 MB).",
-    "fileType": "Please upload a PDF or an image.",
-    "uploadFailed": "Could not upload the contract. Please try again.",
-    "uploading": "Uploading…",
+    "sending": "Sending…",
     "submit": "Submit consignment request",
     "success": "Received. The showroom will review the car before any public listing."
   },
@@ -376,9 +363,10 @@
       "save": "Save vehicle",
       "saveFailed": "Save failed",
       "saveFirstPhotos": "Save first, then upload photos.",
+      "saveFirstContract": "Save the vehicle first, then upload the consignment form.",
       "featured": "Featured on homepage",
       "photos": "Photos",
-      "choosePhoto": "Choose photo",
+      "choosePhoto": "Choose photos",
       "removePhoto": "Remove",
       "actions": "Actions",
       "draft": "Draft",
@@ -425,7 +413,7 @@
       "ownerPhone": "Owner phone (staff only)",
       "ownerNotes": "Owner notes",
       "staffNotes": "Staff notes",
-      "contract": "Uploaded deposit contract (staff only)",
+      "contract": "Deposit contract (staff only)",
       "downloadContract": "Download uploaded contract",
       "noContract": "No contract uploaded with this request."
     },
@@ -474,15 +462,22 @@
     "consignments": {
       "title": "Consignment queue",
       "kicker": "Review",
-      "lead": "Consignment form submissions stay hidden until you approve. Owners cannot publish.",
+      "lead": "Consignment requests stay hidden until you approve. Upload the signed form here — owners cannot attach it from the website.",
       "owner": "Owner: {name} · {phone}",
       "approveDraft": "Approve as draft",
       "publish": "Publish",
       "reject": "Reject",
       "edit": "Edit",
       "empty": "No pending consignments.",
-      "downloadContract": "Download uploaded contract",
-      "noContract": "No contract uploaded."
+      "downloadContract": "Open uploaded form",
+      "noContract": "No consignment form uploaded yet.",
+      "blankForm": "Blank consignment form",
+      "uploadContract": "Upload consignment form",
+      "replaceContract": "Replace form",
+      "uploading": "Uploading…",
+      "uploadFailed": "Could not upload the form. Try again.",
+      "fileTooLarge": "File is too large (maximum 15 MB).",
+      "fileType": "Upload a PDF or an image."
     },
     "inquiries": {
       "title": "Inquiries",

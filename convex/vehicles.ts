@@ -1,6 +1,7 @@
 import { paginationOptsValidator } from "convex/server";
 import { ConvexError, v } from "convex/values";
 import { authedMutation, authedQuery } from "./lib/customFunctions";
+import { assertContractUpload, sanitizeContractFileName } from "./lib/contracts";
 import {
   staffVehicleValidator,
   vehicleStatusValidator,
@@ -383,5 +384,38 @@ export const listRecentPending = authedQuery({
       ownerName: vehicle.ownerName,
       createdAt: vehicle.createdAt,
     }));
+  },
+});
+
+export const generateContractUploadUrl = authedMutation({
+  args: {},
+  returns: v.string(),
+  handler: async (ctx) => {
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+export const attachContract = authedMutation({
+  args: {
+    vehicleId: v.id("vehicles"),
+    storageId: v.id("_storage"),
+    fileName: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const vehicle = await ctx.db.get("vehicles", args.vehicleId);
+    if (!vehicle) {
+      throw new ConvexError("Vehicle not found");
+    }
+    await assertContractUpload(ctx, args.storageId);
+    if (vehicle.contractStorageId && vehicle.contractStorageId !== args.storageId) {
+      await ctx.storage.delete(vehicle.contractStorageId);
+    }
+    await ctx.db.patch("vehicles", args.vehicleId, {
+      contractStorageId: args.storageId,
+      contractFileName: sanitizeContractFileName(args.fileName),
+      updatedAt: Date.now(),
+    });
+    return null;
   },
 });

@@ -2,6 +2,7 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import { PhotoCarousel } from "@/components/inventory/PhotoCarousel";
 import { formatKm, formatOmr } from "@/lib/format";
 import { arabicMake } from "@/lib/vehicleCopy";
 
@@ -23,23 +24,21 @@ export function VehicleCard({ vehicle }: { vehicle: PublicVehicleCard }) {
   const locale = useLocale();
   const t = useTranslations("Inventory");
   const title = locale === "ar" ? vehicle.titleAr : vehicle.titleEn;
-  const photo = vehicle.photos[0];
+  const photos = vehicle.photos.map((photo) => ({
+    url: photo.url,
+    alt: locale === "ar" ? photo.altAr : photo.altEn,
+  }));
 
   return (
     <Link
       href={`/inventory/${vehicle.slug}`}
       className="group relative block overflow-hidden border border-[var(--line)] bg-[var(--ink-panel)]"
     >
-      <div className="relative aspect-[4/3] overflow-hidden bg-[var(--ink-soft)]">
-        {photo ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={photo.url}
-            alt={locale === "ar" ? photo.altAr : photo.altEn}
-            className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
-          />
+      <div className="relative overflow-hidden bg-[var(--ink-soft)]">
+        {photos.length > 0 ? (
+          <PhotoCarousel photos={photos} sizes="card" label={t("gallery")} />
         ) : (
-          <div className="mashrabiya flex h-full items-end p-6">
+          <div className="mashrabiya flex aspect-[4/3] h-full items-end p-6">
             <p className="font-display text-4xl text-[var(--sand-bright)]">
               {locale === "ar" ? arabicMake(vehicle.make) : vehicle.make}
             </p>

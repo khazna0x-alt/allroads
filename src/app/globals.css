@@ -411,6 +411,10 @@ html[dir="rtl"] .drawer-in {
   scrollbar-width: thin;
 }
 
+body:not([data-allroads-chat="on"]) .wai-shadow-host {
+  display: none !important;
+}
+
 ::-webkit-scrollbar {
   width: 8px;
 }

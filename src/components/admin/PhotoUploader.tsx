@@ -15,25 +15,27 @@ export function PhotoUploader({ vehicleId }: { vehicleId: Id<"vehicles"> }) {
   const [busy, setBusy] = useState(false);
 
   async function onChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) {
+    const files = Array.from(event.target.files ?? []);
+    if (files.length === 0) {
       return;
     }
     setBusy(true);
     try {
-      const postUrl = await generateUploadUrl();
-      const result = await fetch(postUrl, {
-        method: "POST",
-        headers: { "Content-Type": file.type },
-        body: file,
-      });
-      const json = (await result.json()) as { storageId: Id<"_storage"> };
-      await attach({
-        vehicleId,
-        storageId: json.storageId,
-        altAr: file.name,
-        altEn: file.name,
-      });
+      for (const file of files) {
+        const postUrl = await generateUploadUrl();
+        const result = await fetch(postUrl, {
+          method: "POST",
+          headers: { "Content-Type": file.type },
+          body: file,
+        });
+        const json = (await result.json()) as { storageId: Id<"_storage"> };
+        await attach({
+          vehicleId,
+          storageId: json.storageId,
+          altAr: file.name,
+          altEn: file.name,
+        });
+      }
     } finally {
       event.target.value = "";
       setBusy(false);
@@ -51,6 +53,7 @@ export function PhotoUploader({ vehicleId }: { vehicleId: Id<"vehicles"> }) {
           <input
             type="file"
             accept="image/*"
+            multiple
             className="sr-only"
             disabled={busy}
             onChange={(event) => void onChange(event)}

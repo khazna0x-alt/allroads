@@ -47,27 +47,30 @@ function patchWidgetAudio() {
 
 export function ChatWidget() {
   useEffect(() => {
+    document.body.dataset.allroadsChat = "on";
     patchWidgetAudio();
 
-    if (document.querySelector("script[data-allroads-chat]")) {
-      return;
+    if (!document.querySelector("script[data-allroads-chat]")) {
+      const script = document.createElement("script");
+      script.src = `${ENDPOINT}/scripts/chat-widget.js`;
+      script.async = true;
+      script.dataset.allroadsChat = "true";
+      script.onload = () => {
+        if (!window.AIChatWidget) {
+          return;
+        }
+        new window.AIChatWidget({
+          configId: CONFIG_ID,
+          campaign_id: CAMPAIGN_ID,
+          endpoint: ENDPOINT,
+        });
+      };
+      document.body.appendChild(script);
     }
 
-    const script = document.createElement("script");
-    script.src = `${ENDPOINT}/scripts/chat-widget.js`;
-    script.async = true;
-    script.dataset.allroadsChat = "true";
-    script.onload = () => {
-      if (!window.AIChatWidget) {
-        return;
-      }
-      new window.AIChatWidget({
-        configId: CONFIG_ID,
-        campaign_id: CAMPAIGN_ID,
-        endpoint: ENDPOINT,
-      });
+    return () => {
+      delete document.body.dataset.allroadsChat;
     };
-    document.body.appendChild(script);
   }, []);
 
   return null;

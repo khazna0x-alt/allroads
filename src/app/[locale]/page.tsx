@@ -2,6 +2,7 @@ import Image from "next/image";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { AboutSection } from "@/components/brand/AboutSection";
+import { ChatWidget } from "@/components/brand/ChatWidget";
 import { LocationCard } from "@/components/brand/LocationCard";
 import { FeaturedCars } from "@/components/inventory/FeaturedCars";
 
@@ -120,6 +121,7 @@ export default async function HomePage({
           <LocationCard />
         </div>
       </section>
+      <ChatWidget />
     </div>
   );
 }

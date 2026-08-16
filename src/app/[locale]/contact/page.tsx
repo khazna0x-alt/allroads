@@ -1,6 +1,5 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { LocationCard } from "@/components/brand/LocationCard";
-import { ContractDownloadLink } from "@/components/consign/ContractDownloadLink";
 import { InquiryForm } from "@/components/forms/InquiryForm";
 import { Link } from "@/i18n/navigation";
 import { brand } from "@/lib/brand";
@@ -37,13 +36,10 @@ export default async function ContactPage({
           <div className="border border-[var(--sand)]/30 bg-[var(--ink)] p-5">
             <p className="text-[var(--sand)]">{t("consignCtaTitle")}</p>
             <p className="mt-2 text-sm leading-7">{t("consignCtaBody")}</p>
-            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <div className="mt-4">
               <Link href="/consign" className="btn-primary px-5">
                 {t("consignCta")}
               </Link>
-              <ContractDownloadLink className="btn-secondary px-5">
-                {t("downloadContract")}
-              </ContractDownloadLink>
             </div>
           </div>
           <div>

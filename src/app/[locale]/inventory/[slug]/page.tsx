@@ -4,6 +4,7 @@ import { useQuery } from "convex/react";
 import { useLocale, useTranslations } from "next-intl";
 import { use } from "react";
 import { InquiryForm } from "@/components/forms/InquiryForm";
+import { PhotoCarousel } from "@/components/inventory/PhotoCarousel";
 import { brand } from "@/lib/brand";
 import { api } from "@/lib/convex";
 import { formatKm, formatOmr } from "@/lib/format";
@@ -26,10 +27,7 @@ export default function VehicleDetailPage({
         <div className="inventory-skeleton h-3 w-40" />
         <div className="inventory-skeleton mt-4 h-10 w-3/4 max-w-xl" />
         <div className="inventory-skeleton mt-4 h-8 w-40" />
-        <div className="mt-8 grid gap-3 md:grid-cols-2">
-          <div className="inventory-skeleton aspect-[4/3]" />
-          <div className="inventory-skeleton hidden aspect-[4/3] md:block" />
-        </div>
+        <div className="inventory-skeleton mt-8 aspect-[16/10] sm:aspect-[2/1]" />
         <div className="mt-10 grid gap-10 lg:grid-cols-[1.2fr_0.8fr]">
           <div className="space-y-3">
             <div className="inventory-skeleton h-4 w-full" />
@@ -62,19 +60,18 @@ export default function VehicleDetailPage({
       <h1 className="font-display mt-3 text-3xl break-words sm:text-4xl md:text-5xl">{title}</h1>
       <p className="mt-3 text-xl text-[var(--sand-bright)] sm:text-2xl">{formatOmr(vehicle.priceOmr, locale)}</p>
 
-      <div className="gallery-scroll mt-8 flex snap-x snap-mandatory gap-3 overflow-x-auto md:grid md:grid-cols-2 md:overflow-visible">
+      <div className="mt-8 overflow-hidden border border-[var(--line)]">
         {vehicle.photos.length > 0 ? (
-          vehicle.photos.map((photo) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={photo.url}
-              src={photo.url}
-              alt={locale === "ar" ? photo.altAr : photo.altEn}
-              className="aspect-[4/3] w-[min(100%,28rem)] shrink-0 snap-center object-cover md:w-full"
-            />
-          ))
+          <PhotoCarousel
+            photos={vehicle.photos.map((photo) => ({
+              url: photo.url,
+              alt: locale === "ar" ? photo.altAr : photo.altEn,
+            }))}
+            sizes="detail"
+            label={t("gallery")}
+          />
         ) : (
-          <div className="mashrabiya flex min-h-64 w-full items-end border border-[var(--line)] p-6 sm:min-h-80 sm:p-8">
+          <div className="mashrabiya flex min-h-64 w-full items-end p-6 sm:min-h-80 sm:p-8">
             <p className="font-display text-4xl sm:text-5xl">
               {locale === "ar" ? arabicMake(vehicle.make) : vehicle.make}
             </p>

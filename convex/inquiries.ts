@@ -210,14 +210,6 @@ export const submitConsignment = mutation({
   },
 });
 
-export const generateConsignmentUploadUrl = mutation({
-  args: {},
-  returns: v.string(),
-  handler: async (ctx) => {
-    return await ctx.storage.generateUploadUrl();
-  },
-});
-
 async function toStaffInquiry(ctx: QueryCtx, inquiry: Doc<"inquiries">) {
   const vehicle = inquiry.vehicleId ? await ctx.db.get("vehicles", inquiry.vehicleId) : null;
   return {

@@ -10,6 +10,7 @@ import {
   PageHeader,
 } from "@/components/admin/ui";
 import { useConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { BlankConsignmentFormLink, ContractUploader } from "@/components/admin/ContractUploader";
 import { api } from "@/lib/convex";
 import { displayVehicleTitle } from "@/lib/format";
 
@@ -23,7 +24,12 @@ export default function ConsignmentsPage() {
 
   return (
     <div>
-      <PageHeader kicker={t("kicker")} title={t("title")} lead={t("lead")} />
+      <PageHeader
+        kicker={t("kicker")}
+        title={t("title")}
+        lead={t("lead")}
+        actions={<BlankConsignmentFormLink />}
+      />
       <GoldRule />
       <div className="mt-8 space-y-4">
         {(queue ?? []).map((vehicle) => (
@@ -41,19 +47,11 @@ export default function ConsignmentsPage() {
                   <DeskTime value={vehicle.createdAt} />
                 </p>
                 {vehicle.ownerNotes ? <p className="mt-3 max-w-2xl text-sm text-pretty">{vehicle.ownerNotes}</p> : null}
-                {vehicle.contractUrl ? (
-                  <a
-                    href={vehicle.contractUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="admin-btn admin-btn-ghost mt-3"
-                  >
-                    {t("downloadContract")}
-                    {vehicle.contractFileName ? ` · ${vehicle.contractFileName}` : ""}
-                  </a>
-                ) : (
-                  <p className="mt-3 text-xs text-[var(--ivory-dim)]">{t("noContract")}</p>
-                )}
+                <ContractUploader
+                  vehicleId={vehicle._id}
+                  contractUrl={vehicle.contractUrl}
+                  contractFileName={vehicle.contractFileName}
+                />
               </div>
               <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
                 <AdminButton onClick={() => void setStatus({ vehicleId: vehicle._id, status: "draft" })}>

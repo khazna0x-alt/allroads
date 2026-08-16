@@ -7,6 +7,7 @@ import { useState } from "react";
 import { AdminButton, AdminField, AdminSelect, AdminTextarea, DeskCard } from "@/components/admin/ui";
 import { api, type Id } from "@/lib/convex";
 import { PhotoUploader } from "./PhotoUploader";
+import { ContractUploader } from "./ContractUploader";
 
 type VehicleValues = {
   stockCode?: string;
@@ -254,18 +255,14 @@ export function VehicleForm({
       <DeskCard>
         <h2 className="font-display text-xl">{t("inventory.sections.contract")}</h2>
         <p className="mt-2 text-sm text-[var(--ivory-dim)]">{t("fields.contract")}</p>
-        {initial?.contractUrl ? (
-          <a
-            href={initial.contractUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="admin-btn admin-btn-ghost mt-4"
-          >
-            {t("fields.downloadContract")}
-            {initial.contractFileName ? ` · ${initial.contractFileName}` : ""}
-          </a>
+        {vehicleId ? (
+          <ContractUploader
+            vehicleId={vehicleId}
+            contractUrl={initial?.contractUrl}
+            contractFileName={initial?.contractFileName}
+          />
         ) : (
-          <p className="mt-4 text-sm text-[var(--ivory-dim)]">{t("fields.noContract")}</p>
+          <p className="mt-4 text-sm text-[var(--ivory-dim)]">{t("inventory.saveFirstContract")}</p>
         )}
       </DeskCard>
 
