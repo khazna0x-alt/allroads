@@ -99,7 +99,9 @@
     "automatic": "Automatic",
     "manual": "Manual",
     "loadMore": "Load more",
-    "gallery": "Vehicle photos"
+    "gallery": "Vehicle photos",
+    "prevPhoto": "Previous photo",
+    "nextPhoto": "Next photo"
   },
   "Contact": {
     "eyebrow": "Get in Touch",
@@ -122,7 +124,6 @@
     "successTitle": "Sent Successfully!",
     "success": "Thank you for reaching out. Our team will get back to you shortly.",
     "general": "General Inquiry",
-    "consign": "Consign Vehicle for Sale",
     "displayed": "Inquire about Displayed Car",
     "consignCtaTitle": "Consign a vehicle",
     "consignCtaBody": "Send your vehicle details on the consignment page. The showroom reviews every listing before it is published.",

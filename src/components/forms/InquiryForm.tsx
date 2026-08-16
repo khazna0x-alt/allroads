@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { FieldLabel } from "@/components/forms/FieldLabel";
 import { Link } from "@/i18n/navigation";
+import { inquirySubjects } from "@/lib/brand";
 import { api, type Id } from "@/lib/convex";
 
 export function InquiryForm({
@@ -73,8 +74,14 @@ export function InquiryForm({
           defaultValue={defaultSubject ?? t("general")}
           className="field-input"
         >
-          <option value={t("general")}>{t("general")}</option>
-          <option value={t("displayed")}>{t("displayed")}</option>
+          {inquirySubjects.map((subject) => {
+            const label = locale === "ar" ? subject.ar : subject.en;
+            return (
+              <option key={subject.value} value={label}>
+                {label}
+              </option>
+            );
+          })}
         </select>
       </label>
       <label className="block text-sm">

@@ -44,7 +44,7 @@ export function VehicleCard({ vehicle }: { vehicle: PublicVehicleCard }) {
             </p>
           </div>
         )}
-        <span className="absolute start-4 top-4 border border-[var(--sand)] bg-[rgba(10,10,10,0.72)] px-2 py-1 text-[10px] tracking-[0.2em] uppercase text-[var(--sand)]">
+        <span className="pointer-events-none absolute start-4 top-4 z-20 border border-[var(--sand)] bg-[rgba(10,10,10,0.72)] px-2 py-1 text-[10px] tracking-[0.2em] uppercase text-[var(--sand)]">
           {t(vehicle.spec)}
         </span>
       </div>

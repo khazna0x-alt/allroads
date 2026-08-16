@@ -29,11 +29,6 @@ export const brand = {
 export const inquirySubjects = [
   { value: "general", ar: "استفسار عام", en: "General Inquiry" },
   {
-    value: "consign",
-    ar: "طلب إيداع مركبة للبيع",
-    en: "Consign Vehicle for Sale",
-  },
-  {
     value: "displayed",
     ar: "الاستفسار عن سيارة معروضة",
     en: "Inquire about Displayed Car",
