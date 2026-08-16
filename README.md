@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# All Roads Showroom
 
-## Getting Started
+Bilingual (Arabic default, RTL) Next.js + Convex platform for [allroads.om](https://allroads.om): luxury Omani showroom pages, staff-published inventory, public consignment, published-only `/api/inventory` for Wa-Agents, and a disabled Heffl lead adapter.
 
-First, run the development server:
+## Run locally
+
+Use two terminals:
 
 ```bash
+npm install
+npx convex dev
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) (Arabic) or `/en`. Staff desk: [http://localhost:3000/admin](http://localhost:3000/admin).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+`npx convex dev` is for development only. Do not run `npx convex deploy` unless you are shipping production.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Environment
 
-## Learn More
+Copy `env.example` to `.env.local` after Convex prints `NEXT_PUBLIC_CONVEX_URL`.
 
-To learn more about Next.js, take a look at the following resources:
+| Variable | Where | Purpose |
+| --- | --- | --- |
+| `NEXT_PUBLIC_CONVEX_URL` | `.env.local` | Convex deployment URL |
+| `NEXT_PUBLIC_SITE_URL` | `.env.local` | Public site origin used in the inventory API |
+| `NEXT_PUBLIC_WAAGENTS_WIDGET_ID` | `.env.local` | Optional Wa-Agents chat widget |
+| `SITE_URL` | Convex env | `http://localhost:3000` in development |
+| `JWT_PRIVATE_KEY` / `JWKS` | Convex env | Convex Auth keys (`node scripts/generateKeys.mjs`, then `npx convex env set --from-file`) |
+| `HEFFL_ENABLED` | Convex env | Keep `false` until CRM is ready |
+| `HEFFL_API_KEY` | Convex env | Heffl v1 API key (unused while disabled) |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+After `npx convex dev` is connected:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npx convex env set SITE_URL http://localhost:3000
+node scripts/generateKeys.mjs
+npx convex env set --from-file .env.convex --force
+```
 
-## Deploy on Vercel
+## Seed the first admin
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+No public registration. Create the first admin once:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+node scripts/seed-admin.mjs admin@allroads.om "All Roads Admin"
+```
+
+Or from the Convex dashboard, run `seed:seedFirstAdmin` with `{ "identifier": "admin@allroads.om", "name": "All Roads Admin" }`.
+
+The function returns a generated password **once**. Sign in at `/admin/login`, then change it.
+
+Seed sample GCC cars so the showroom is not empty:
+
+```bash
+npx convex run seed:seedSampleVehicles
+```
+
+## Publication rule
+
+Public pages and `GET /api/inventory` return only `status === "published"`. Consignment submissions enter as `pending_review`. Only staff can publish, hide, or mark sold.
+
+## Wa-Agents
+
+Point the bot at `https://allroads.om/api/inventory` (and `/api/inventory/:stockCode`) plus the site FAQs for hours, Al Amerat / Lulu location, financing, and consignment rules. Hidden, pending, and sold cars disappear from the feed on the next request.

@@ -1,0 +1,42 @@
+export const brand = {
+  nameAr: "كل الطرق",
+  nameEn: "All Roads",
+  legalAr: "معرض كل الطرق للسيارات",
+  legalEn: "All Roads Car Showroom",
+  subtitleAr: "نخبة السيارات",
+  subtitleEn: "Prestige Preowned",
+  taglineAr: "أصالة الضيافة العُمانية.. وفخامة السيارات العالمية",
+  taglineEn: "Omani Hospitality.. Global Luxury",
+  phoneDisplay: "+968 22431325",
+  phoneE164: "+96822431325",
+  whatsapp: "https://wa.me/96822431325",
+  instagram: "https://www.instagram.com/all.roads.om",
+  maps: "https://www.google.com/maps?q=All+roads+Car+Showroom,+next+to+lulu+al+amirat,+%D8%A7%D9%84%D8%B9%D8%A7%D9%85%D8%B1%D8%A7%D8%AA&ftid=0x3e91fb00699d0ca5:0x485c496840cbc43c&entry=gps&lucs=,94222521,94224825,94227247,94227248,47071704,47069508,94218641,94203019,47084304,94208458,94208447&g_ep=CAISDTYuMTIzLjAuNzEzODAYACCenQoqYyw5NDIyMjUyMSw5NDIyNDgyNSw5NDIyNzI0Nyw5NDIyNzI0OCw0NzA3MTcwNCw0NzA2OTUwOCw5NDIxODY0MSw5NDIwMzAxOSw0NzA4NDMwNCw5NDIwODQ1OCw5NDIwODQ0N0ICT00%3D&g_st=com.google.maps.preview.copy",
+  locationAr: "العامرات، بجوار لولو هايبر ماركت",
+  locationEn: "Al Amerat, next to Lulu Hypermarket",
+  cityAr: "محافظة مسقط، سلطنة عُمان",
+  cityEn: "Muscat, Oman",
+  hoursWeekdayAr: "السبت إلى الخميس:",
+  hoursWeekdayEn: "Sat to Thu:",
+  hoursMorning: "9:00 AM - 1:00 PM",
+  hoursEvening: "4:00 PM - 9:00 PM",
+  fridayAr: "الجمعة: مغلق",
+  fridayEn: "Friday: Closed",
+  crNumber: "1500803",
+  credit: "Dynamic Business Solutions",
+  contractPdf: "/vehicle-deposit-contract.pdf",
+} as const;
+
+export const inquirySubjects = [
+  { value: "general", ar: "استفسار عام", en: "General Inquiry" },
+  {
+    value: "consign",
+    ar: "طلب إيداع مركبة للبيع",
+    en: "Consign Vehicle for Sale",
+  },
+  {
+    value: "displayed",
+    ar: "الاستفسار عن سيارة معروضة",
+    en: "Inquire about Displayed Car",
+  },
+] as const;
