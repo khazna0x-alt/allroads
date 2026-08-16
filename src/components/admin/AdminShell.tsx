@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuthActions } from "@convex-dev/auth/react";
-import { useQuery } from "convex/react";
+import { useConvexAuth, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -15,8 +15,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { signOut } = useAuthActions();
+  const { isAuthenticated, isLoading } = useConvexAuth();
   const isLogin = pathname === "/admin/login";
-  const me = useQuery(api.staff.me, isLogin ? "skip" : {});
+  const me = useQuery(api.staff.me, isLogin || isLoading || !isAuthenticated ? "skip" : {});
   const [menuPath, setMenuPath] = useState<string | null>(null);
   const menuOpen = menuPath === pathname;
 
@@ -30,10 +31,11 @@ export function AdminShell({ children }: { children: ReactNode }) {
   ];
 
   useEffect(() => {
-    if (!isLogin && me === null) {
-      router.replace("/admin/login");
+    if (isLogin || isLoading || isAuthenticated) {
+      return;
     }
-  }, [isLogin, me, router]);
+    router.replace("/admin/login");
+  }, [isAuthenticated, isLoading, isLogin, router]);
 
   useEffect(() => {
     if (!menuOpen) {
@@ -63,10 +65,25 @@ export function AdminShell({ children }: { children: ReactNode }) {
     );
   }
 
-  if (me === undefined || me === null) {
+  if (isLoading || me === undefined) {
     return (
       <div className="admin-desk flex min-h-svh items-center justify-center">
         <p className="admin-kicker">{t("opening")}</p>
+      </div>
+    );
+  }
+
+  if (me === null) {
+    return (
+      <div className="admin-desk flex min-h-svh flex-col items-center justify-center gap-4 px-4 text-center">
+        <p className="admin-kicker">{t("noDeskAccess")}</p>
+        <button
+          type="button"
+          onClick={() => void signOut().then(() => router.replace("/admin/login"))}
+          className="admin-btn admin-btn-secondary"
+        >
+          {t("signOut")}
+        </button>
       </div>
     );
   }

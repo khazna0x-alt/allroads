@@ -1,18 +1,27 @@
 "use client";
 
 import { useAuthActions } from "@convex-dev/auth/react";
+import { useConvexAuth } from "convex/react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AdminButton, AdminField, GoldRule } from "@/components/admin/ui";
 import { Mark } from "@/components/brand/Mark";
 
 export default function AdminLoginPage() {
   const t = useTranslations("Admin.login");
   const { signIn } = useAuthActions();
+  const { isAuthenticated } = useConvexAuth();
   const router = useRouter();
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+    router.replace("/admin");
+  }, [isAuthenticated, router]);
 
   return (
     <div className="admin-login-stage flex min-h-svh items-center justify-center px-4 py-20 sm:px-5">
@@ -28,7 +37,14 @@ export default function AdminLoginPage() {
           setPending(true);
           setError("");
           void signIn("password", formData)
-            .then(() => router.replace("/admin"))
+            .then((result) => {
+              if (result.signingIn) {
+                router.replace("/admin");
+                return;
+              }
+              setError(t("invalid"));
+              setPending(false);
+            })
             .catch(() => {
               setError(t("invalid"));
               setPending(false);

@@ -1,7 +1,6 @@
 import {
   convexAuthNextjsMiddleware,
   createRouteMatcher,
-  nextjsMiddlewareRedirect,
 } from "@convex-dev/auth/nextjs/server";
 import createIntlMiddleware from "next-intl/middleware";
 import { NextResponse, type NextRequest } from "next/server";
@@ -9,7 +8,6 @@ import { ADMIN_LOCALE_COOKIE, parseAdminLocale } from "./i18n/admin-locale";
 import { routing } from "./i18n/routing";
 
 const intlMiddleware = createIntlMiddleware(routing);
-const isAdminLogin = createRouteMatcher(["/admin/login"]);
 const isAdminRoute = createRouteMatcher(["/admin", "/admin/(.*)"]);
 const isPublicApi = createRouteMatcher(["/api/inventory", "/api/inventory/(.*)"]);
 
@@ -22,27 +20,25 @@ function continueAdmin(request: NextRequest) {
   });
 }
 
-export default convexAuthNextjsMiddleware(async (request, { convexAuth }) => {
-  if (isPublicApi(request)) {
-    return NextResponse.next();
-  }
+const handler = convexAuthNextjsMiddleware(
+  async (request) => {
+    if (isPublicApi(request)) {
+      return NextResponse.next();
+    }
 
-  if (isAdminRoute(request)) {
-    const authenticated = await convexAuth.isAuthenticated();
-    if (isAdminLogin(request)) {
-      if (authenticated) {
-        return nextjsMiddlewareRedirect(request, "/admin");
-      }
+    if (isAdminRoute(request)) {
       return continueAdmin(request);
     }
-    if (!authenticated) {
-      return nextjsMiddlewareRedirect(request, "/admin/login");
-    }
-    return continueAdmin(request);
-  }
 
-  return intlMiddleware(request);
-});
+    return intlMiddleware(request);
+  },
+  {
+    cookieConfig: { maxAge: 60 * 60 * 24 * 30 },
+  },
+);
+
+export default handler;
+export { handler as proxy };
 
 export const config = {
   matcher: ["/((?!.*\\..*|_next).*)", "/", "/(api|trpc)(.*)"],

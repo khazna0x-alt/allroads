@@ -252,6 +252,7 @@
     "closeMenu": "Close menu",
     "skipToContent": "Skip to desk",
     "opening": "Opening the desk…",
+    "noDeskAccess": "This account does not have desk access.",
     "omr": "OMR",
     "confirm": {
       "cancel": "Cancel",
