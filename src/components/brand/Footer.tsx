@@ -2,18 +2,17 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { brand } from "@/lib/brand";
 import { Mark } from "./Mark";
+import { WhatsAppIcon } from "./WhatsAppButton";
 
 export async function Footer() {
   const t = await getTranslations("Footer");
   const nav = await getTranslations("Nav");
   const locale = await getLocale();
   const name = locale === "en" ? brand.nameEn : brand.nameAr;
-  const location = locale === "en" ? brand.locationEn : brand.locationAr;
-  const city = locale === "en" ? brand.cityEn : brand.cityAr;
 
   return (
     <footer className="mt-8 border-t border-[var(--line)] bg-[var(--ink-soft)]">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-10 sm:px-5 sm:py-14 md:grid-cols-3">
+      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-10 sm:px-5 sm:py-14 md:grid-cols-2">
         <div>
           <Mark className="mb-4 h-16 w-16" />
           <p className="font-display text-3xl text-white">{name}</p>
@@ -21,19 +20,27 @@ export async function Footer() {
             {locale === "en" ? brand.taglineEn : brand.taglineAr}
           </p>
           <p className="mt-3 text-xs text-gray-500">C.R. No. {brand.crNumber}</p>
-        </div>
-        <div className="text-sm leading-7 text-gray-400">
-          <p>{location}</p>
-          <p>{city}</p>
-          <a
-            href={brand.instagram}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-4 inline-flex size-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-[var(--ivory-dim)] transition-colors hover:border-[var(--crimson)] hover:bg-[var(--crimson)] hover:text-white"
-          >
-            <InstagramIcon />
-            <span className="sr-only">Instagram</span>
-          </a>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <a
+              href={brand.instagram}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex size-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-[var(--ivory-dim)] transition-colors hover:border-[var(--crimson)] hover:bg-[var(--crimson)] hover:text-white"
+            >
+              <InstagramIcon />
+              <span className="sr-only">Instagram</span>
+            </a>
+            <a
+              href={brand.whatsapp}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={nav("whatsapp")}
+              className="inline-flex size-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-[var(--ivory-dim)] transition-colors hover:border-[var(--crimson)] hover:bg-[var(--crimson)] hover:text-white"
+            >
+              <WhatsAppIcon />
+              <span className="sr-only">{nav("whatsapp")}</span>
+            </a>
+          </div>
         </div>
         <div className="flex flex-col gap-1 text-sm">
           <Link href="/inventory" className="inline-flex min-h-11 items-center hover:text-[var(--sand)]">
@@ -50,6 +57,9 @@ export async function Footer() {
           </Link>
           <Link href="/terms" className="inline-flex min-h-11 items-center hover:text-[var(--sand)]">
             {nav("terms")}
+          </Link>
+          <Link href="/booking-terms" className="inline-flex min-h-11 items-center hover:text-[var(--sand)]">
+            {nav("bookingTerms")}
           </Link>
         </div>
       </div>

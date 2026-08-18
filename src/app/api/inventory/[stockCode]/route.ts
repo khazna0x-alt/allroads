@@ -4,6 +4,7 @@ import { api } from "@/lib/convex";
 
 export const dynamic = "force-dynamic";
 
+/** Public floor lookup. Includes reserved/booked with `status` so chat on those pages does not treat them as available. */
 export async function GET(
   _request: Request,
   context: { params: Promise<{ stockCode: string }> },
@@ -22,6 +23,7 @@ export async function GET(
     stockCode: vehicle.stockCode,
     slug: vehicle.slug,
     url: `${site}/inventory/${vehicle.slug}`,
+    status: vehicle.status,
     titleEn: vehicle.titleEn,
     titleAr: vehicle.titleAr,
     make: vehicle.make,

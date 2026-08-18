@@ -45,6 +45,7 @@ function patchWidgetAudio() {
   });
 }
 
+/** Homepage only — not site-wide. */
 export function ChatWidget() {
   useEffect(() => {
     document.body.dataset.allroadsChat = "on";

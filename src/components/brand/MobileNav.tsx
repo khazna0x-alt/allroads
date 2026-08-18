@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Link, usePathname } from "@/i18n/navigation";
+import { publicNav } from "@/lib/nav";
 
 export function MobileNav() {
   const t = useTranslations("Nav");
@@ -27,15 +28,8 @@ export function MobileNav() {
     };
   }, [open]);
 
-  const links = [
-    { href: "/", label: t("home") },
-    { href: "/inventory", label: t("inventory") },
-    { href: "/consign", label: t("consign") },
-    { href: "/contact", label: t("contact") },
-  ] as const;
-
   return (
-    <div className="md:hidden">
+    <div className="lg:hidden">
       <button
         type="button"
         aria-expanded={open}
@@ -49,14 +43,14 @@ export function MobileNav() {
       {open ? (
         <div id="public-mobile-nav" className="glass-nav-panel absolute inset-x-0 top-full z-[60]">
           <nav className="mx-auto flex max-w-6xl flex-col gap-1 px-5 py-4 text-sm">
-            {links.map((link) => (
+            {publicNav.map((item) => (
               <Link
-                key={link.href}
-                href={link.href}
+                key={item.key}
+                href={item.href}
                 className="min-h-11 px-2 py-3 text-[var(--ivory)] hover:text-[var(--sand-bright)]"
                 onClick={() => setOpenPath(null)}
               >
-                {link.label}
+                {t(item.key)}
               </Link>
             ))}
           </nav>

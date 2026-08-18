@@ -77,8 +77,8 @@ function EditVehicleDesk({ params }: { params: Promise<{ id: string }> }) {
                 confirmLabel: tInventory("delete"),
                 cancelLabel: t("confirm.cancel"),
                 tone: "danger",
-              }).then((ok) => {
-                if (!ok) {
+              }).then((result) => {
+                if (!result.confirmed) {
                   return;
                 }
                 void removeVehicle({ vehicleId }).then(() => {

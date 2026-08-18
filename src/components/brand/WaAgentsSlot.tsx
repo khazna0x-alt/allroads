@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 
+/** WhatsApp launcher. Handoffs POST to Convex `/webhooks/waagents` from Wa-Agents servers — never put WAAGENTS_WEBHOOK_SECRET in this widget. */
 export function WaAgentsSlot() {
   const widgetId = process.env.NEXT_PUBLIC_WAAGENTS_WIDGET_ID;
 

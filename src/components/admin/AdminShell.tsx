@@ -26,6 +26,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
     { href: "/admin/inventory", label: t("nav.inventory") },
     { href: "/admin/consignments", label: t("nav.consignments") },
     { href: "/admin/inquiries", label: t("nav.inquiries") },
+    { href: "/admin/bookings", label: t("nav.bookings") },
     { href: "/admin/import", label: t("nav.excel") },
     { href: "/admin/staff", label: t("nav.staff") },
   ];
@@ -102,11 +103,11 @@ export function AdminShell({ children }: { children: ReactNode }) {
     <div className="admin-desk min-h-svh lg:grid lg:grid-cols-[16.5rem_minmax(0,1fr)]">
       <a
         href="#admin-main"
-        className="sr-only focus:not-sr-only focus:absolute focus:start-4 focus:top-4 focus:z-[80] focus:bg-[var(--sand)] focus:px-4 focus:py-2 focus:text-[var(--ink)]"
+        className="admin-no-print sr-only focus:not-sr-only focus:absolute focus:start-4 focus:top-4 focus:z-[80] focus:bg-[var(--sand)] focus:px-4 focus:py-2 focus:text-[var(--ink)]"
       >
         {t("skipToContent")}
       </a>
-      <div className="sticky top-0 z-[60] flex items-center justify-between gap-3 border-b border-[var(--line)] bg-[rgba(11,9,6,0.92)] px-4 py-3 backdrop-blur lg:hidden">
+      <div className="admin-no-print sticky top-0 z-[60] flex items-center justify-between gap-3 border-b border-[var(--line)] bg-[rgba(11,9,6,0.92)] px-4 py-3 backdrop-blur lg:hidden">
         <button
           type="button"
           aria-expanded={menuOpen}
@@ -133,7 +134,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
       {menuOpen ? (
         <aside
           id="admin-mobile-nav"
-          className="admin-sidebar drawer-in fixed inset-y-0 start-0 z-[70] flex h-dvh w-[min(18rem,88vw)] flex-col overflow-y-auto border-e border-[var(--line)] overscroll-contain lg:hidden"
+          className="admin-sidebar admin-no-print drawer-in fixed inset-y-0 start-0 z-[70] flex h-dvh w-[min(18rem,88vw)] flex-col overflow-y-auto border-e border-[var(--line)] overscroll-contain lg:hidden"
         >
           <SidebarNav
             links={links}
@@ -148,7 +149,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
         </aside>
       ) : null}
 
-      <aside className="admin-sidebar sticky top-0 hidden h-svh min-h-0 flex-col border-e border-[var(--line)] lg:flex">
+      <aside className="admin-sidebar admin-no-print sticky top-0 hidden h-svh min-h-0 flex-col border-e border-[var(--line)] lg:flex">
         <SidebarNav
           links={links}
           pathname={pathname}

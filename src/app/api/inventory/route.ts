@@ -4,8 +4,11 @@ import { api } from "@/lib/convex";
 
 export const dynamic = "force-dynamic";
 
+/** Published-only inventory feed for the website chat / Wa-Agents. Do not add unpublished, reserved, or booked cars. */
 export async function GET() {
-  const vehicles = await fetchQuery(api.public.listPublishedFeed, {});
+  const vehicles = (await fetchQuery(api.public.listPublishedFeed, {})).filter(
+    (vehicle) => vehicle.status === "published",
+  );
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://allroads.om";
 
   return NextResponse.json(
@@ -16,6 +19,7 @@ export async function GET() {
         stockCode: vehicle.stockCode,
         slug: vehicle.slug,
         url: `${site}/inventory/${vehicle.slug}`,
+        status: vehicle.status,
         titleEn: vehicle.titleEn,
         titleAr: vehicle.titleAr,
         make: vehicle.make,

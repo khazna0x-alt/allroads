@@ -20,9 +20,16 @@ export type ConfirmRequest = {
   confirmLabel: string;
   cancelLabel: string;
   tone?: ConfirmTone;
+  reasonLabel?: string;
+  reasonRequired?: boolean;
 };
 
-type ConfirmFn = (request: ConfirmRequest) => Promise<boolean>;
+export type ConfirmResult = {
+  confirmed: boolean;
+  reason: string;
+};
+
+type ConfirmFn = (request: ConfirmRequest) => Promise<ConfirmResult>;
 
 const ConfirmContext = createContext<ConfirmFn | null>(null);
 
@@ -39,17 +46,17 @@ export function useConfirmDialog() {
 
 export function ConfirmProvider({ children }: { children: ReactNode }) {
   const [request, setRequest] = useState<ConfirmRequest | null>(null);
-  const resolverRef = useRef<((value: boolean) => void) | null>(null);
+  const resolverRef = useRef<((value: ConfirmResult) => void) | null>(null);
 
   const confirm = useCallback<ConfirmFn>((next) => {
-    resolverRef.current?.(false);
-    return new Promise<boolean>((resolve) => {
+    resolverRef.current?.({ confirmed: false, reason: "" });
+    return new Promise<ConfirmResult>((resolve) => {
       resolverRef.current = resolve;
       setRequest(next);
     });
   }, []);
 
-  const settle = useCallback((value: boolean) => {
+  const settle = useCallback((value: ConfirmResult) => {
     resolverRef.current?.(value);
     resolverRef.current = null;
     setRequest(null);
@@ -57,7 +64,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     return () => {
-      resolverRef.current?.(false);
+      resolverRef.current?.({ confirmed: false, reason: "" });
       resolverRef.current = null;
     };
   }, []);
@@ -72,8 +79,10 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
           confirmLabel={request.confirmLabel}
           cancelLabel={request.cancelLabel}
           tone={request.tone ?? "default"}
-          onCancel={() => settle(false)}
-          onConfirm={() => settle(true)}
+          reasonLabel={request.reasonLabel}
+          reasonRequired={request.reasonRequired === true}
+          onCancel={() => settle({ confirmed: false, reason: "" })}
+          onConfirm={(reason) => settle({ confirmed: true, reason })}
         />
       ) : null}
     </ConfirmContext.Provider>
@@ -86,6 +95,8 @@ function ConfirmDialog({
   confirmLabel,
   cancelLabel,
   tone,
+  reasonLabel,
+  reasonRequired,
   onCancel,
   onConfirm,
 }: {
@@ -94,14 +105,18 @@ function ConfirmDialog({
   confirmLabel: string;
   cancelLabel: string;
   tone: ConfirmTone;
+  reasonLabel?: string;
+  reasonRequired: boolean;
   onCancel: () => void;
-  onConfirm: () => void;
+  onConfirm: (reason: string) => void;
 }) {
   const titleId = useId();
   const messageId = useId();
+  const reasonId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
+  const reasonRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     const previous = document.activeElement;
@@ -174,6 +189,18 @@ function ConfirmDialog({
         <p id={messageId} className="mt-3 text-sm text-[var(--ivory-dim)] text-pretty">
           {message}
         </p>
+        {reasonLabel ? (
+          <label className="mt-4 block text-sm" htmlFor={reasonId}>
+            <span className="mb-2 block text-[var(--ivory-dim)]">{reasonLabel}</span>
+            <textarea
+              ref={reasonRef}
+              id={reasonId}
+              rows={3}
+              required={reasonRequired}
+              className="admin-field"
+            />
+          </label>
+        ) : null}
         <div className="mt-6 flex flex-wrap justify-end gap-2">
           <AdminButton ref={cancelRef} onClick={onCancel}>
             {cancelLabel}
@@ -181,7 +208,14 @@ function ConfirmDialog({
           <AdminButton
             ref={confirmRef}
             variant={tone === "danger" ? "danger" : "primary"}
-            onClick={onConfirm}
+            onClick={() => {
+              const reason = reasonRef.current?.value.trim() ?? "";
+              if (reasonRequired && !reason) {
+                reasonRef.current?.focus();
+                return;
+              }
+              onConfirm(reason);
+            }}
           >
             {confirmLabel}
           </AdminButton>

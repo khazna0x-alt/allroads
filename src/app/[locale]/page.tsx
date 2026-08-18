@@ -44,11 +44,11 @@ export default async function HomePage({
                 {hero("lead")}
               </p>
               <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                <Link href="/#services" className="btn-primary">
-                  {hero("ctaServices")}
+                <Link href="/inventory" className="btn-primary">
+                  {hero("ctaBrowse")}
                 </Link>
-                <Link href="/inventory" className="btn-secondary">
-                  {hero("ctaShowroom")}
+                <Link href="/consign" className="btn-secondary">
+                  {hero("ctaList")}
                 </Link>
               </div>
             </div>
@@ -89,7 +89,12 @@ export default async function HomePage({
           </p>
           <h2 className="font-display mt-3 text-3xl sm:text-4xl">{services("title")}</h2>
           <div className="mt-10 grid gap-6 md:grid-cols-3">
-            <ServiceCard n="01" title={services("salesTitle")} body={services("salesBody")} />
+            <ServiceCard
+              n="01"
+              title={services("salesTitle")}
+              body={services("salesBody")}
+              href="/inventory"
+            />
             <ServiceCard
               n="02"
               title={services("vipTitle")}
@@ -135,7 +140,7 @@ function ServiceCard({
   n: string;
   title: string;
   body: string;
-  href?: "/consign";
+  href?: "/inventory" | "/consign";
 }) {
   const content = (
     <>

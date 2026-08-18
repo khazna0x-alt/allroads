@@ -8,6 +8,7 @@ import { LocaleDir } from "@/components/brand/LocaleDir";
 import { WaAgentsSlot } from "@/components/brand/WaAgentsSlot";
 import { arabicFont, englishFont } from "@/lib/fonts";
 import { routing } from "@/i18n/routing";
+import { siteOrigin } from "@/lib/site";
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
@@ -21,6 +22,7 @@ export async function generateMetadata({
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "Meta" });
   return {
+    metadataBase: new URL(siteOrigin()),
     title: t("title"),
     description: t("description"),
   };

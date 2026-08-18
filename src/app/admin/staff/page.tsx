@@ -261,14 +261,14 @@ function RosterCard({
   }
 
   async function removeUser() {
-    const ok = await confirm({
+    const result = await confirm({
       title: t("confirm.removeStaffTitle"),
       message: t("confirm.removeStaff"),
       confirmLabel: t("staffPage.remove"),
       cancelLabel: t("confirm.cancel"),
       tone: "danger",
     });
-    if (!ok) {
+    if (!result.confirmed) {
       return;
     }
     setBusy(true);

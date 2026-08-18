@@ -11,17 +11,6 @@ export async function ConsignmentPackage() {
 
   return (
     <div className="space-y-10">
-      <section className="border border-[var(--sand)]/40 bg-[var(--ink-soft)] p-5 sm:p-7">
-        <p className="text-xs font-bold tracking-[0.28em] uppercase text-[var(--sand)]">
-          {t("packageEyebrow")}
-        </p>
-        <h2 className="font-display mt-3 text-2xl sm:text-3xl">{t("packageTitle")}</h2>
-        <p className="mt-4 text-base leading-8 text-gray-300 sm:text-lg">{t("depositBody")}</p>
-        <p className="mt-5 inline-block border border-[var(--crimson)]/50 bg-[var(--crimson)]/10 px-4 py-2 text-sm font-semibold text-[var(--sand-bright)]">
-          {t("depositHighlight")}
-        </p>
-      </section>
-
       <section className="grid gap-4 md:grid-cols-2">
         <Pillar title={t("care.title")} items={careKeys.map((key) => t(`care.${key}`))} />
         <Pillar

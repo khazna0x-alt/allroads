@@ -26,6 +26,10 @@ export default async function PrivacyPage({
           <h2 className="font-display text-2xl text-white">{t("metaTitle")}</h2>
           <p className="mt-3">{t("metaBody")}</p>
         </div>
+        <div>
+          <h2 className="font-display text-2xl text-white">{t("toolsTitle")}</h2>
+          <p className="mt-3">{t("toolsBody")}</p>
+        </div>
       </div>
     </article>
   );

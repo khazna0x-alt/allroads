@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { startTransition, Suspense, useMemo, useState } from "react";
 import { useConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { clientPublishLock, publishLockTitle } from "@/components/admin/PublishLock";
 import {
   AdminButton,
   AdminCheckbox,
@@ -49,6 +50,7 @@ function InventoryDesk() {
     { initialNumItems: 20 },
   );
   const setStatusMany = useMutation(api.vehicles.setStatusMany);
+  const setPublicHiddenMany = useMutation(api.vehicles.setPublicHiddenMany);
   const removeMany = useMutation(api.vehicles.removeMany);
   const [selected, setSelected] = useState<Set<Id<"vehicles">>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
@@ -115,14 +117,14 @@ function InventoryDesk() {
     },
     action: () => Promise<unknown>,
   ) {
-    const ok = await confirm({
+    const result = await confirm({
       title: request.title,
       message: request.message,
       confirmLabel: request.confirmLabel,
       cancelLabel: t("confirm.cancel"),
       tone: request.tone,
     });
-    if (!ok) {
+    if (!result.confirmed) {
       return;
     }
     setBulkBusy(true);
@@ -152,7 +154,7 @@ function InventoryDesk() {
         message: t("confirm.bulkHide", { count: selectedCount }),
         confirmLabel: t("inventory.hide"),
       },
-      () => setStatusMany({ vehicleIds: selectedIds, status: "hidden" }),
+      () => setPublicHiddenMany({ vehicleIds: selectedIds, publicHidden: true }),
     );
   }
 
@@ -161,9 +163,9 @@ function InventoryDesk() {
       {
         title: t("confirm.bulkDraftTitle"),
         message: t("confirm.bulkDraft", { count: selectedCount }),
-        confirmLabel: t("inventory.draft"),
+        confirmLabel: t("inventory.approved"),
       },
-      () => setStatusMany({ vehicleIds: selectedIds, status: "draft" }),
+      () => setStatusMany({ vehicleIds: selectedIds, status: "approved" }),
     );
   }
 
@@ -255,7 +257,18 @@ function InventoryDesk() {
               </p>
             </div>
             <div className="mt-4">
-              <VehicleActions vehicleId={vehicle._id} published={vehicle.status === "published"} statusFilter={status} />
+              <VehicleActions
+                vehicleId={vehicle._id}
+                status={vehicle.status}
+                onFloor={vehicle.status === "published" || vehicle.status === "reserved" || vehicle.status === "booked"}
+                publicHidden={vehicle.publicHidden}
+                publishReady={vehicle.publishReady}
+                publishBlockers={vehicle.publishBlockers}
+                publishGrandfathered={vehicle.publishGrandfathered}
+                contractEndsAt={vehicle.contractEndsAt}
+                onSiteConfirmed={vehicle.onSiteConfirmed}
+                statusFilter={status}
+              />
             </div>
           </article>
         ))}
@@ -309,7 +322,14 @@ function InventoryDesk() {
                 <td>
                   <VehicleActions
                     vehicleId={vehicle._id}
-                    published={vehicle.status === "published"}
+                    status={vehicle.status}
+                    onFloor={vehicle.status === "published" || vehicle.status === "reserved" || vehicle.status === "booked"}
+                    publicHidden={vehicle.publicHidden}
+                    publishReady={vehicle.publishReady}
+                    publishBlockers={vehicle.publishBlockers}
+                    publishGrandfathered={vehicle.publishGrandfathered}
+                    contractEndsAt={vehicle.contractEndsAt}
+                    onSiteConfirmed={vehicle.onSiteConfirmed}
                     statusFilter={status}
                   />
                 </td>
@@ -347,7 +367,7 @@ function InventoryDesk() {
                 {t("inventory.hide")}
               </AdminButton>
               <AdminButton onClick={bulkDraft} disabled={bulkBusy}>
-                {t("inventory.draft")}
+                {t("inventory.approved")}
               </AdminButton>
               <AdminButton variant="danger" onClick={bulkSold} disabled={bulkBusy}>
                 {t("inventory.sold")}
@@ -368,28 +388,68 @@ function InventoryDesk() {
 
 function VehicleActions({
   vehicleId,
-  published,
+  status,
+  onFloor,
+  publicHidden,
+  publishReady,
+  publishBlockers,
+  publishGrandfathered,
+  contractEndsAt,
+  onSiteConfirmed,
   statusFilter,
 }: {
   vehicleId: Id<"vehicles">;
-  published: boolean;
+  status: string;
+  onFloor: boolean;
+  publicHidden: boolean;
+  publishReady: boolean;
+  publishBlockers: string[];
+  publishGrandfathered: boolean;
+  contractEndsAt?: number;
+  onSiteConfirmed: boolean;
   statusFilter: string;
 }) {
   const t = useTranslations("Admin");
   const setVehicleStatus = useMutation(api.vehicles.setStatus);
+  const setPublicHidden = useMutation(api.vehicles.setPublicHidden);
+  const lock = clientPublishLock({
+    publishReady,
+    publishBlockers,
+    contractEndsAt,
+    publishGrandfathered,
+  });
+  const lockTitle = lock.ready
+    ? undefined
+    : publishLockTitle(lock.blockers, (key) => t(`publishBlockers.${key}`));
 
   return (
     <div className="flex flex-wrap gap-2">
       <AdminButton href={staffVehiclePath(vehicleId, statusFilter)} variant="ghost">
         {t("inventory.editLink")}
       </AdminButton>
-      {published ? (
-        <AdminButton onClick={() => void setVehicleStatus({ vehicleId, status: "hidden" })}>
+      {onFloor && !publicHidden ? (
+        <AdminButton onClick={() => void setPublicHidden({ vehicleId, publicHidden: true })}>
           {t("inventory.hide")}
         </AdminButton>
-      ) : (
-        <AdminButton onClick={() => void setVehicleStatus({ vehicleId, status: "published" })}>
+      ) : publicHidden ? (
+        <AdminButton onClick={() => void setPublicHidden({ vehicleId, publicHidden: false })}>
+          {t("inventory.unhide")}
+        </AdminButton>
+      ) : status === "approved_for_publishing" ? (
+        <AdminButton
+          disabled={!lock.ready || !onSiteConfirmed}
+          title={!onSiteConfirmed ? t("publishBlockers.not_on_site") : lockTitle}
+          onClick={() => void setVehicleStatus({ vehicleId, status: "published" })}
+        >
           {t("inventory.publish")}
+        </AdminButton>
+      ) : (
+        <AdminButton
+          disabled={!lock.ready}
+          title={lockTitle}
+          onClick={() => void setVehicleStatus({ vehicleId, status: "approved_for_publishing" })}
+        >
+          {t("inventory.approveForPublish")}
         </AdminButton>
       )}
     </div>
