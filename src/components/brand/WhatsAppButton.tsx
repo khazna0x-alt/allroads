@@ -39,7 +39,7 @@ export function WhatsAppButton({
       target="_blank"
       rel="noopener noreferrer"
       aria-label={ariaLabel}
-      className={`${variantClass} gap-2 px-5 ${className}`.trim()}
+      className={`${variantClass} gap-2 ${className}`.trim()}
       onClick={onClick}
     >
       <WhatsAppIcon />

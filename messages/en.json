@@ -5,9 +5,10 @@
   },
   "Nav": {
     "home": "Home",
-    "inventory": "Available Cars",
+    "inventory": "Cars",
     "consign": "List Your Car",
     "services": "Services",
+    "howItWorks": "How it works",
     "about": "About",
     "contact": "Contact",
     "privacy": "Privacy Policy",
@@ -279,11 +280,15 @@
     "vin": "Chassis / VIN",
     "vinHint": "Stored for staff only. Never shown on the public site.",
     "photos": "Initial photos",
-    "photosHint": "Optional. Stored privately until the showroom publishes the car.",
+    "addPhotos": "Add photos",
     "ownershipDocs": "Ownership documents",
-    "ownershipDocsHint": "Optional mulkiya or registration photos/PDF. Staff only.",
+    "addDocs": "Add documents",
+    "replaceFile": "Change",
+    "removeFile": "Remove",
+    "fileCount": "{count} of {max}",
     "notes": "Notes about the car",
     "captcha": "Human check: what is {a} + {b}?",
+    "captchaLabel": "Human check",
     "captchaError": "Incorrect answer, please try again.",
     "termsLabel": "I agree to the consignment",
     "termsRequired": "Please accept the terms to continue.",
@@ -305,6 +310,103 @@
       "wagon": "Wagon",
       "pickup": "Pickup",
       "van": "Van"
+    }
+  },
+  "HowItWorks": {
+    "eyebrow": "The journey",
+    "title": "How it works",
+    "lead": "Ten steps to sell. Ten steps to buy. Nothing is published until inspection, contract, and floor confirm.",
+    "tablist": "Selling or buying",
+    "sellerTab": "Selling",
+    "buyerTab": "Buying",
+    "sellerLead": "From List Your Car to transfer. Nothing is published until inspection, contract, and floor confirm.",
+    "buyerLead": "From Cars to deposit and ROP transfer. What you see is what is on the floor.",
+    "ctaList": "List Your Car",
+    "ctaBrowse": "Browse Cars",
+    "ctaContact": "Contact",
+    "sellerSteps": {
+      "1": {
+        "title": "Submit",
+        "body": "Send make, year, km, asking price, and photos on List Your Car."
+      },
+      "2": {
+        "title": "Review",
+        "body": "Staff check the request. Nothing goes live on submit."
+      },
+      "3": {
+        "title": "Inspection scheduling",
+        "body": "We book the car at the Al Amerat showroom."
+      },
+      "4": {
+        "title": "Inspection",
+        "body": "Body, paint, engine, interior, tires, and mileage are recorded."
+      },
+      "5": {
+        "title": "Pricing",
+        "body": "Asking price is confirmed in OMR after the inspection notes."
+      },
+      "6": {
+        "title": "Contract",
+        "body": "Sign consignment papers. They stay private."
+      },
+      "7": {
+        "title": "Photography",
+        "body": "Showroom angles and marketing photos."
+      },
+      "8": {
+        "title": "Approval / publish",
+        "body": "Only after inspection, signed contract, and floor confirm."
+      },
+      "9": {
+        "title": "Inquiries",
+        "body": "Buyers inquire or WhatsApp. You hear from the showroom."
+      },
+      "10": {
+        "title": "Sale / transfer",
+        "body": "Deposit, sale, and ROP ownership transfer on site."
+      }
+    },
+    "buyerSteps": {
+      "1": {
+        "title": "Browse",
+        "body": "Open Cars for what is actually on the floor."
+      },
+      "2": {
+        "title": "Search / filter",
+        "body": "Make, year, price, km, colour, spec."
+      },
+      "3": {
+        "title": "Detail page",
+        "body": "Stock number, status, and full listing."
+      },
+      "4": {
+        "title": "Photos / specs",
+        "body": "Gallery, specs, inspection date. No chassis on the public page."
+      },
+      "5": {
+        "title": "Inquiry",
+        "body": "Send a message from the car page."
+      },
+      "6": {
+        "title": "Sales contact",
+        "body": "WhatsApp or a call from the showroom."
+      },
+      "7": {
+        "title": "Viewing",
+        "body": "Book a time to see the car in Al Amerat."
+      },
+      "8": {
+        "title": "Booking",
+        "body": "Hold the car. One active booking per listing."
+      },
+      "9": {
+        "title": "Deposit",
+        "body": "5% (min 200 OMR) by bank transfer. Upload the receipt."
+      },
+      "10": {
+        "title": "Purchase / transfer",
+        "body": "Contract, remaining payment, and ROP transfer at the showroom."
+      }
     }
   },
   "Location": {

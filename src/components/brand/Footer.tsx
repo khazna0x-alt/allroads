@@ -42,29 +42,36 @@ export async function Footer() {
             </a>
           </div>
         </div>
-        <div className="flex flex-col gap-1 text-sm">
-          <Link href="/inventory" className="inline-flex min-h-11 items-center hover:text-[var(--sand)]">
-            {nav("inventory")}
-          </Link>
-          <Link href="/consign" className="inline-flex min-h-11 items-center hover:text-[var(--sand)]">
-            {nav("consign")}
-          </Link>
-          <Link href="/contact" className="inline-flex min-h-11 items-center hover:text-[var(--sand)]">
-            {nav("contact")}
-          </Link>
-          <Link href="/privacy" className="inline-flex min-h-11 items-center hover:text-[var(--sand)]">
-            {nav("privacy")}
-          </Link>
-          <Link href="/terms" className="inline-flex min-h-11 items-center hover:text-[var(--sand)]">
-            {nav("terms")}
-          </Link>
-          <Link href="/booking-terms" className="inline-flex min-h-11 items-center hover:text-[var(--sand)]">
-            {nav("bookingTerms")}
-          </Link>
+        <div className="grid grid-cols-2 gap-x-6 text-sm sm:gap-x-10">
+          <div className="flex flex-col gap-1">
+            <Link href="/inventory" className="inline-flex min-h-11 items-center hover:text-[var(--sand)]">
+              {nav("inventory")}
+            </Link>
+            <Link href="/consign" className="inline-flex min-h-11 items-center hover:text-[var(--sand)]">
+              {nav("consign")}
+            </Link>
+            <Link href="/how-it-works" className="inline-flex min-h-11 items-center hover:text-[var(--sand)]">
+              {nav("howItWorks")}
+            </Link>
+            <Link href="/contact" className="inline-flex min-h-11 items-center hover:text-[var(--sand)]">
+              {nav("contact")}
+            </Link>
+          </div>
+          <div className="flex flex-col gap-1">
+            <Link href="/privacy" className="inline-flex min-h-11 items-center hover:text-[var(--sand)]">
+              {nav("privacy")}
+            </Link>
+            <Link href="/terms" className="inline-flex min-h-11 items-center hover:text-[var(--sand)]">
+              {nav("terms")}
+            </Link>
+            <Link href="/booking-terms" className="inline-flex min-h-11 items-center hover:text-[var(--sand)]">
+              {nav("bookingTerms")}
+            </Link>
+          </div>
         </div>
       </div>
       <div className="gold-rule" />
-      <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-5 text-xs text-gray-500 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-5">
+      <div className="mx-auto max-w-6xl px-4 py-5 text-center text-xs text-gray-500 sm:px-5">
         <p>
           © {new Date().getFullYear()} {brand.legalEn}. {t("rights")}
         </p>

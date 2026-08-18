@@ -69,12 +69,12 @@ export function VehicleCard({ vehicle }: { vehicle: PublicVehicleCard }) {
   );
 
   return (
-    <article className="group relative overflow-hidden border border-[var(--line)] bg-[var(--ink-panel)]">
-      <div className="relative overflow-hidden bg-[var(--ink-soft)]">
+    <article className="group relative flex h-full flex-col overflow-hidden border border-[var(--line)] bg-[var(--ink-panel)]">
+      <div className="relative shrink-0 overflow-hidden bg-[var(--ink-soft)]">
         {photos.length > 0 ? (
           <PhotoCarousel photos={photos} sizes="card" label={t("gallery")} />
         ) : (
-          <div className="mashrabiya flex aspect-[4/3] h-full items-end p-6">
+          <div className="mashrabiya flex aspect-[4/3] items-end p-6">
             <p className="font-display text-4xl text-[var(--sand-bright)]">
               {locale === "ar" ? arabicMake(vehicle.make) : vehicle.make}
             </p>
@@ -92,29 +92,32 @@ export function VehicleCard({ vehicle }: { vehicle: PublicVehicleCard }) {
           {statusLabel(vehicle.status, t)}
         </span>
       </div>
-      <div className="space-y-2 p-5">
+      <div className="flex flex-1 flex-col p-5">
         <p className="text-[11px] tracking-[0.22em] uppercase text-[var(--ivory-dim)]">
           {vehicle.stockCode} · {vehicle.year}
         </p>
-        <h3 className="font-display text-2xl leading-tight">
+        <h3 className="font-display mt-2 text-2xl leading-tight">
           <Link href={`/inventory/${vehicle.slug}`}>{title}</Link>
         </h3>
-        <p className="text-sm text-[var(--ivory-dim)]">
+        <p className="mt-2 text-sm text-[var(--ivory-dim)]">
           {locale === "ar" ? arabicMake(vehicle.make) : vehicle.make} {vehicle.model} ·{" "}
           {t(`bodyTypes.${vehicle.bodyType}`)}
         </p>
-        <div className="flex flex-wrap items-end justify-between gap-2 pt-2">
+        <div className="mt-2 flex flex-wrap items-end justify-between gap-2">
           <p className="text-[var(--sand-bright)]">{formatOmr(vehicle.priceOmr, locale)}</p>
           <p className="text-sm text-[var(--ivory-dim)]">{formatKm(vehicle.mileageKm, locale)}</p>
         </div>
-        <div className="flex flex-col gap-2 pt-3 sm:flex-row">
-          <Link href={`/inventory/${vehicle.slug}`} className="btn-secondary min-w-0 flex-1 text-center">
+        <div className="mt-auto grid grid-cols-2 items-stretch gap-2 pt-4">
+          <Link
+            href={`/inventory/${vehicle.slug}`}
+            className="btn-secondary flex h-11 w-full min-w-0 items-center justify-center px-2 text-center text-sm whitespace-nowrap"
+          >
             {t("viewDetails")}
           </Link>
           <WhatsAppButton
             href={whatsapp}
             ariaLabel={t("whatsapp")}
-            className="min-w-0 flex-1"
+            className="h-11 w-full min-w-0 px-2 text-sm"
             onClick={() =>
               void logWhatsApp({
                 vehicleId: vehicle._id,
@@ -130,19 +133,19 @@ export function VehicleCard({ vehicle }: { vehicle: PublicVehicleCard }) {
 
 export function VehicleCardSkeleton() {
   return (
-    <div className="overflow-hidden border border-[var(--line)] bg-[var(--ink-panel)]" aria-hidden="true">
-      <div className="inventory-skeleton aspect-[4/3]" />
-      <div className="space-y-3 p-5">
+    <div className="flex h-full flex-col overflow-hidden border border-[var(--line)] bg-[var(--ink-panel)]" aria-hidden="true">
+      <div className="inventory-skeleton aspect-[4/3] shrink-0" />
+      <div className="flex flex-1 flex-col p-5">
         <div className="inventory-skeleton h-3 w-28" />
-        <div className="inventory-skeleton h-7 w-4/5" />
-        <div className="inventory-skeleton h-4 w-2/3" />
-        <div className="flex justify-between pt-1">
+        <div className="inventory-skeleton mt-2 h-7 w-4/5" />
+        <div className="inventory-skeleton mt-2 h-4 w-2/3" />
+        <div className="mt-2 flex justify-between">
           <div className="inventory-skeleton h-5 w-24" />
           <div className="inventory-skeleton h-4 w-16" />
         </div>
-        <div className="flex gap-2 pt-2">
-          <div className="inventory-skeleton h-11 flex-1" />
-          <div className="inventory-skeleton h-11 flex-1" />
+        <div className="mt-auto grid grid-cols-2 gap-2 pt-4">
+          <div className="inventory-skeleton h-11" />
+          <div className="inventory-skeleton h-11" />
         </div>
       </div>
     </div>

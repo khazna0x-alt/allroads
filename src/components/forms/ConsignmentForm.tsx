@@ -2,8 +2,9 @@
 
 import { useMutation } from "convex/react";
 import { useLocale, useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FieldLabel } from "@/components/forms/FieldLabel";
+import { FileListField, type ListedFile } from "@/components/forms/FileListField";
 import { Link } from "@/i18n/navigation";
 import { api, type Id } from "@/lib/convex";
 import {
@@ -11,6 +12,7 @@ import {
   isAllowedContractFile,
   MAX_CONTRACT_BYTES,
 } from "@/lib/contractFile";
+import { isAllowedVehiclePhoto, MAX_VEHICLE_PHOTO_BYTES } from "@/lib/imageUpload";
 
 const BODY_TYPES = [
   "suv",
@@ -25,7 +27,6 @@ const BODY_TYPES = [
 
 const MAX_PHOTOS = 12;
 const MAX_DOCS = 8;
-const MAX_PHOTO_BYTES = 12 * 1024 * 1024;
 
 export function ConsignmentForm() {
   const t = useTranslations("Consign");
@@ -37,11 +38,15 @@ export function ConsignmentForm() {
   const [stockCode, setStockCode] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [captcha] = useState(() => {
+  const [photos, setPhotos] = useState<ListedFile[]>([]);
+  const [docs, setDocs] = useState<ListedFile[]>([]);
+  const [captcha, setCaptcha] = useState<{ a: number; b: number; sum: number } | null>(null);
+
+  useEffect(() => {
     const a = Math.floor(Math.random() * 6) + 2;
     const b = Math.floor(Math.random() * 6) + 1;
-    return { a, b, sum: a + b };
-  });
+    setCaptcha({ a, b, sum: a + b });
+  }, []);
 
   async function uploadFile(file: File): Promise<Id<"_storage">> {
     const postUrl = await generateUploadUrl();
@@ -59,7 +64,7 @@ export function ConsignmentForm() {
 
   async function onSubmit(formData: FormData) {
     const answer = Number(formData.get("captcha"));
-    if (answer !== captcha.sum) {
+    if (!captcha || answer !== captcha.sum) {
       setStatus("error");
       setError(t("captchaError"));
       return;
@@ -73,35 +78,31 @@ export function ConsignmentForm() {
     setBusy(true);
     setError("");
     try {
-      const photos = Array.from(formData.getAll("photos")).filter(
-        (item): item is File => item instanceof File && item.size > 0,
-      );
-      const docs = Array.from(formData.getAll("ownershipDocs")).filter(
-        (item): item is File => item instanceof File && item.size > 0,
-      );
-      if (photos.length > MAX_PHOTOS) {
+      const photoFiles = photos.map((item) => item.file);
+      const docFiles = docs.map((item) => item.file);
+      if (photoFiles.length > MAX_PHOTOS) {
         throw new Error(t("tooManyPhotos"));
       }
-      if (docs.length > MAX_DOCS) {
+      if (docFiles.length > MAX_DOCS) {
         throw new Error(t("tooManyDocs"));
       }
-      for (const photo of photos) {
-        if (photo.size > MAX_PHOTO_BYTES || !photo.type.startsWith("image/")) {
+      for (const photo of photoFiles) {
+        if (photo.size > MAX_VEHICLE_PHOTO_BYTES || !isAllowedVehiclePhoto(photo)) {
           throw new Error(t("photoType"));
         }
       }
-      for (const doc of docs) {
+      for (const doc of docFiles) {
         if (doc.size > MAX_CONTRACT_BYTES || !isAllowedContractFile(doc)) {
           throw new Error(t("docType"));
         }
       }
 
       const photoStorageIds: Id<"_storage">[] = [];
-      for (const photo of photos) {
+      for (const photo of photoFiles) {
         photoStorageIds.push(await uploadFile(photo));
       }
       const ownershipDocs: Array<{ storageId: Id<"_storage">; fileName: string }> = [];
-      for (const doc of docs) {
+      for (const doc of docFiles) {
         ownershipDocs.push({
           storageId: await uploadFile(doc),
           fileName: doc.name,
@@ -174,24 +175,30 @@ export function ConsignmentForm() {
         <FieldLabel label={t("notes")} required />
         <textarea name="notes" required rows={5} className="field-input" />
       </label>
-      <label className="min-w-0 text-sm">
-        <FieldLabel label={t("photos")} />
-        <input name="photos" type="file" accept="image/*" multiple className="field-input" />
-        <span className="mt-1 block text-xs text-gray-400">{t("photosHint")}</span>
-      </label>
-      <label className="min-w-0 text-sm">
-        <FieldLabel label={t("ownershipDocs")} />
-        <input
-          name="ownershipDocs"
-          type="file"
-          accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,.pdf,.jpg,.jpeg,.png,.webp"
-          multiple
-          className="field-input"
-        />
-        <span className="mt-1 block text-xs text-gray-400">{t("ownershipDocsHint")}</span>
-      </label>
+      <FileListField
+        label={t("photos")}
+        accept="image/*"
+        maxCount={MAX_PHOTOS}
+        files={photos}
+        onChange={setPhotos}
+        addLabel={t("addPhotos")}
+        replaceLabel={t("replaceFile")}
+        removeLabel={t("removeFile")}
+        countLabel={t("fileCount", { count: photos.length, max: MAX_PHOTOS })}
+      />
+      <FileListField
+        label={t("ownershipDocs")}
+        accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,.pdf,.jpg,.jpeg,.png,.webp"
+        maxCount={MAX_DOCS}
+        files={docs}
+        onChange={setDocs}
+        addLabel={t("addDocs")}
+        replaceLabel={t("replaceFile")}
+        removeLabel={t("removeFile")}
+        countLabel={t("fileCount", { count: docs.length, max: MAX_DOCS })}
+      />
       <Input
-        label={t("captcha", { a: captcha.a, b: captcha.b })}
+        label={captcha ? t("captcha", { a: captcha.a, b: captcha.b }) : t("captchaLabel")}
         name="captcha"
         required
         className="md:col-span-2"
@@ -207,7 +214,7 @@ export function ConsignmentForm() {
         </span>
       </label>
       {error ? <p className="md:col-span-2 text-sm text-red-400">{error}</p> : null}
-      <button type="submit" disabled={busy} className="btn-primary md:col-span-2 disabled:opacity-60">
+      <button type="submit" disabled={busy || !captcha} className="btn-primary md:col-span-2 disabled:opacity-60">
         {busy ? t("sending") : t("submit")}
       </button>
     </form>
