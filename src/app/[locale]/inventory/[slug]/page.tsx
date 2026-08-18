@@ -20,7 +20,7 @@ export async function generateMetadata({
     };
   }
   const title = locale === "ar" ? vehicle.titleAr : vehicle.titleEn;
-  const description =
+  const description = (
     (locale === "ar" ? vehicle.descriptionAr : vehicle.descriptionEn).trim() ||
     t("metaDescription", {
       year: vehicle.year,
@@ -28,10 +28,26 @@ export async function generateMetadata({
       model: vehicle.model,
       price: formatOmr(vehicle.priceOmr, locale),
       stock: vehicle.stockCode,
-    });
+    })
+  ).slice(0, 180);
+  const photo = vehicle.photos[0]?.url;
+  const images = photo ? [{ url: photo }] : [{ url: "/og.png", width: 512, height: 512 }];
+
   return {
     title,
-    description: description.slice(0, 180),
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      images,
+    },
+    twitter: {
+      card: photo ? "summary_large_image" : "summary",
+      title,
+      description,
+      images: photo ? [photo] : ["/og.png"],
+    },
   };
 }
 
