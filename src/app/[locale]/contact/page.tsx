@@ -1,7 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { WhatsAppButton } from "@/components/brand/WhatsAppButton";
 import { InquiryForm } from "@/components/forms/InquiryForm";
-import { Link } from "@/i18n/navigation";
 import { brand } from "@/lib/brand";
 
 export async function generateMetadata({
@@ -68,10 +67,6 @@ export default async function ContactPage({
             <p className="mt-2">{isAr ? brand.fridayAr : brand.fridayEn}</p>
           </div>
           <div>
-            <p className="text-[var(--sand)]">{t("directions")}</p>
-            <p className="mt-2 max-w-xl leading-7">{t("directionsBody")}</p>
-          </div>
-          <div className="flex flex-wrap gap-3">
             <a
               href={brand.maps}
               target="_blank"
@@ -80,23 +75,6 @@ export default async function ContactPage({
             >
               {t("maps")}
             </a>
-            <a
-              href={brand.instagram}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-secondary px-5"
-            >
-              {t("instagram")}
-            </a>
-          </div>
-          <div className="border border-[var(--sand)]/30 bg-[var(--ink)] p-5">
-            <p className="text-[var(--sand)]">{t("consignCtaTitle")}</p>
-            <p className="mt-2 text-sm leading-7">{t("consignCtaBody")}</p>
-            <div className="mt-4">
-              <Link href="/consign" className="btn-primary px-5">
-                {t("consignCta")}
-              </Link>
-            </div>
           </div>
         </div>
         <div className="min-w-0 border border-[var(--line)] bg-[var(--ink-soft)] p-4 sm:p-6">

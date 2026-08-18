@@ -8,6 +8,7 @@ const STATIC_PATHS = [
   "/",
   "/inventory",
   "/consign",
+  "/how-it-works",
   "/contact",
   "/privacy",
   "/terms",
