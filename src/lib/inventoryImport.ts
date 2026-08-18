@@ -13,12 +13,20 @@ export type ImportBodyType =
   | "pickup"
   | "van";
 export type ImportStatus =
-  | "pending_review"
-  | "draft"
+  | "new"
+  | "under_review"
+  | "inspection_scheduled"
+  | "under_inspection"
+  | "awaiting_contract"
+  | "approved"
+  | "not_accepted"
+  | "approved_for_publishing"
   | "published"
-  | "hidden"
+  | "reserved"
+  | "booked"
   | "sold"
-  | "rejected";
+  | "withdrawn"
+  | "expired";
 export type ImportOwnership = "dealership" | "consignment";
 
 export type ImportVehicleRow = {
@@ -110,7 +118,7 @@ export const SHOWROOM_INSTRUCTIONS = [
   { Column: "Model", Meaning: "Year (2018), not the model name." },
   { Column: "KM", Meaning: "150.000 KM, 46585 KM, or BRAND NEW." },
   { Column: "Price", Meaning: "Price in OMR." },
-  { Column: "Notes", Meaning: "BOOKED hides the car. SOLD marks it sold. Leave blank to publish." },
+  { Column: "Notes", Meaning: "BOOKED or RESERVED keeps the car on the floor. SOLD marks it sold. HIDDEN withdraws it. Leave blank to publish." },
 ];
 
 const MAKE_ALIASES: Array<{ match: string; canonical: string }> = [
@@ -475,13 +483,26 @@ function parseFullRow(
   const ownership = parseEnum(mapped.ownership, ["dealership", "consignment"] as const);
   const status =
     parseEnum(mapped.status, [
+      "new",
+      "under_review",
+      "inspection_scheduled",
+      "under_inspection",
+      "awaiting_contract",
+      "approved",
+      "not_accepted",
+      "approved_for_publishing",
+      "published",
+      "reserved",
+      "booked",
+      "sold",
+      "withdrawn",
+      "expired",
       "pending_review",
       "draft",
-      "published",
       "hidden",
-      "sold",
       "rejected",
     ] as const) ?? notes.status;
+  const mappedStatus = status ? mapImportedStatus(status) : undefined;
 
   const featuresText = cellText(mapped.features);
   const features = featuresText
@@ -513,7 +534,7 @@ function parseFullRow(
       descriptionAr: cellText(mapped.descriptionAr),
       descriptionEn: cellText(mapped.descriptionEn),
       ownership,
-      status,
+      status: mappedStatus,
       staffNotes: cellText(mapped.staffNotes) || notes.staffNotes,
     },
   };
@@ -635,16 +656,34 @@ function parseNotes(value: unknown): { status?: ImportStatus; staffNotes?: strin
     return {};
   }
   const upper = raw.toUpperCase();
-  if (upper === "BOOKED" || upper === "RESERVED") {
-    return { status: "hidden", staffNotes: raw };
+  if (upper === "BOOKED") {
+    return { status: "booked", staffNotes: raw };
+  }
+  if (upper === "RESERVED") {
+    return { status: "reserved", staffNotes: raw };
   }
   if (upper === "SOLD") {
     return { status: "sold", staffNotes: raw };
   }
-  if (upper === "HIDDEN") {
-    return { status: "hidden", staffNotes: raw };
+  if (upper === "HIDDEN" || upper === "WITHDRAWN") {
+    return { status: "withdrawn", staffNotes: raw };
   }
   return { staffNotes: raw };
+}
+
+function mapImportedStatus(status: string): ImportStatus {
+  switch (status) {
+    case "pending_review":
+      return "under_review";
+    case "draft":
+      return "approved";
+    case "rejected":
+      return "not_accepted";
+    case "hidden":
+      return "withdrawn";
+    default:
+      return status as ImportStatus;
+  }
 }
 
 function inferBodyType(carType: string, seats: string, model: string): ImportBodyType {
@@ -756,10 +795,16 @@ export function toShowroomExportRow(vehicle: {
     if (/booked|reserved/i.test(vehicle.staffNotes ?? "")) {
       return "BOOKED";
     }
+    if (vehicle.status === "booked") {
+      return "BOOKED";
+    }
+    if (vehicle.status === "reserved") {
+      return "RESERVED";
+    }
     if (vehicle.status === "sold") {
       return "SOLD";
     }
-    if (vehicle.status === "hidden") {
+    if (vehicle.status === "withdrawn" || vehicle.status === "expired") {
       return "HIDDEN";
     }
     return vehicle.staffNotes ?? "";

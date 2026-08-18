@@ -18,6 +18,7 @@ import {
   buildVehicleSlug,
   nextStockCode,
 } from "./lib/vehicles";
+import { mapLegacyVehicleStatus } from "./lib/vehicleStatus";
 import { buildArabicDescription, buildArabicTitle, pickArabicText } from "./lib/vehicleCopy";
 
 const importRowValidator = v.object({
@@ -105,7 +106,7 @@ export const exportVehicles = adminQuery({
       descriptionAr: vehicle.descriptionAr,
       descriptionEn: vehicle.descriptionEn,
       ownership: vehicle.ownership,
-      status: vehicle.status,
+      status: mapLegacyVehicleStatus(vehicle.status),
       staffNotes: vehicle.staffNotes ?? "",
     }));
   },
@@ -169,7 +170,8 @@ export const importVehicles = adminMutation({
         }),
       );
       const features = mergeFeatures(existing?.features ?? [], row.features);
-      const status = row.status ?? existing?.status ?? "draft";
+      const status = mapLegacyVehicleStatus(row.status ?? existing?.status ?? "approved");
+      const publicHidden = status === "withdrawn" ? true : (existing?.publicHidden ?? false);
       const payload = {
         stockCode,
         slug: buildVehicleSlug({
@@ -211,6 +213,14 @@ export const importVehicles = adminMutation({
         }),
         ownership: row.ownership ?? existing?.ownership ?? "dealership",
         status,
+        publicHidden,
+        onSiteConfirmed:
+          existing?.onSiteConfirmed ??
+          (status === "published" || status === "reserved" || status === "booked"),
+        onSiteConfirmedAt:
+          existing?.onSiteConfirmedAt ??
+          (status === "published" ? now : existing?.onSiteConfirmedAt),
+        publishGrandfathered: existing?.publishGrandfathered ?? status === "published",
         staffNotes: nonempty(row.staffNotes) ?? existing?.staffNotes,
         featured: existing?.featured ?? false,
         updatedAt: now,
@@ -245,10 +255,17 @@ export const importVehicles = adminMutation({
       const all = await ctx.db.query("vehicles").take(500);
       for (const vehicle of all) {
         if (!incomingCodes.has(vehicle.stockCode) && vehicle.status === "published") {
-          await ctx.db.patch("vehicles", vehicle._id, {
-            status: args.missingStrategy,
-            updatedAt: now,
-          });
+          if (args.missingStrategy === "sold") {
+            await ctx.db.patch("vehicles", vehicle._id, {
+              status: "sold",
+              updatedAt: now,
+            });
+          } else {
+            await ctx.db.patch("vehicles", vehicle._id, {
+              publicHidden: true,
+              updatedAt: now,
+            });
+          }
           marked += 1;
         }
       }

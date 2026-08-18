@@ -1,4 +1,5 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { Link } from "@/i18n/navigation";
 
 export default async function TermsPage({
   params,
@@ -21,6 +22,15 @@ export default async function TermsPage({
         <div>
           <h2 className="font-display text-2xl text-white">{t("accuracyTitle")}</h2>
           <p className="mt-3">{t("accuracyBody")}</p>
+        </div>
+        <div>
+          <h2 className="font-display text-2xl text-white">{t("bookingTitle")}</h2>
+          <p className="mt-3">{t("bookingBody")}</p>
+          <p className="mt-3">
+            <Link href="/booking-terms" className="text-[var(--sand)] underline">
+              {t("bookingTitle")}
+            </Link>
+          </p>
         </div>
       </div>
     </article>

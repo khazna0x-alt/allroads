@@ -1,8 +1,16 @@
 import { ConvexError } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { deleteVehicleRelatedRows, latestInspection, logAudit, logVehicleStatusChange, requireStatusReason } from "./audit";
+import { depositOmrForPrice, isBookableStatus } from "./bookings";
+import { canPublish, isPublicHidden, publicFloorStatus } from "./publish";
 import { buildSearchText, slugify } from "./identifiers";
 import { resolveArabicDescription, resolveArabicTitle } from "./vehicleCopy";
+import {
+  mapLegacyVehicleStatus,
+  requiresStatusReason,
+  type VehicleStatus,
+} from "./vehicleStatus";
 
 export type VehicleWrite = {
   stockCode?: string;
@@ -33,6 +41,11 @@ export type VehicleWrite = {
   ownerPhone?: string;
   ownerNotes?: string;
   staffNotes?: string;
+  publicHidden?: boolean;
+  onSiteConfirmed?: boolean;
+  contractStatus?: Doc<"vehicles">["contractStatus"];
+  contractStartsAt?: number;
+  contractEndsAt?: number;
 };
 
 export function buildVehicleSlug(input: {
@@ -117,6 +130,7 @@ export type StaffVehiclePhoto = {
   sortOrder: number;
   altAr: string;
   altEn: string;
+  angle?: Doc<"vehiclePhotos">["angle"];
 };
 
 export type StaffVehicleContract = {
@@ -167,6 +181,7 @@ export async function staffPhotosForVehicle(
       sortOrder: photo.sortOrder,
       altAr: photo.altAr,
       altEn: photo.altEn,
+      ...(photo.angle ? { angle: photo.angle } : {}),
     });
   }
   return photoRows;
@@ -188,12 +203,14 @@ export async function staffContractForVehicle(
 export async function toStaffVehicleRecord(ctx: QueryCtx, vehicle: Doc<"vehicles">) {
   const photos = await staffPhotosForVehicle(ctx, vehicle._id);
   const contract = await staffContractForVehicle(ctx, vehicle);
-  return toStaffVehicle(vehicle, photos, contract);
+  const inspection = await latestInspection(ctx, vehicle._id);
+  return toStaffVehicle(vehicle, photos, contract, inspection);
 }
 
 export function toPublicVehicle(
   vehicle: Doc<"vehicles">,
   photos: PublicVehiclePhoto[],
+  extras?: { inspectedAt?: number },
 ) {
   const titleAr = resolveArabicTitle(vehicle);
   const descriptionAr = resolveArabicDescription(vehicle);
@@ -224,6 +241,11 @@ export function toPublicVehicle(
     descriptionEn: vehicle.descriptionEn,
     ownership: vehicle.ownership,
     featured: vehicle.featured,
+    status: publicFloorStatus(vehicle) ?? "published",
+    updatedAt: vehicle.updatedAt,
+    depositOmr: depositOmrForPrice(vehicle.priceOmr),
+    canBook: isBookableStatus(vehicle.status),
+    ...(extras?.inspectedAt !== undefined ? { inspectedAt: extras.inspectedAt } : {}),
     photos: photos.map((photo) => ({
       ...photo,
       altAr: resolveArabicTitle({
@@ -241,7 +263,9 @@ export function toStaffVehicle(
   vehicle: Doc<"vehicles">,
   photos: StaffVehiclePhoto[],
   contract: StaffVehicleContract,
+  inspection: Doc<"inspections"> | null,
 ) {
+  const publish = canPublish(vehicle, inspection);
   return {
     _id: vehicle._id,
     _creationTime: vehicle._creationTime,
@@ -269,8 +293,18 @@ export function toStaffVehicle(
     descriptionAr: vehicle.descriptionAr,
     descriptionEn: vehicle.descriptionEn,
     ownership: vehicle.ownership,
-    status: vehicle.status,
+    status: mapLegacyVehicleStatus(vehicle.status),
     featured: vehicle.featured,
+    publicHidden: isPublicHidden(vehicle),
+    onSiteConfirmed: vehicle.onSiteConfirmed === true,
+    onSiteConfirmedAt: vehicle.onSiteConfirmedAt,
+    contractStatus: vehicle.contractStatus,
+    contractStartsAt: vehicle.contractStartsAt,
+    contractEndsAt: vehicle.contractEndsAt,
+    hasContractFile: vehicle.contractStorageId !== undefined,
+    publishGrandfathered: vehicle.publishGrandfathered === true,
+    publishReady: publish.ok,
+    publishBlockers: publish.reasons,
     ownerName: vehicle.ownerName,
     ownerPhone: vehicle.ownerPhone,
     ownerNotes: vehicle.ownerNotes,
@@ -287,6 +321,7 @@ export function toStaffVehicle(
 export function matchesPublicFilters(
   vehicle: Doc<"vehicles">,
   filters: {
+    keyword?: string;
     make?: string;
     model?: string;
     minPrice?: number;
@@ -294,6 +329,8 @@ export function matchesPublicFilters(
     minYear?: number;
     maxYear?: number;
     maxMileage?: number;
+    color?: string;
+    status?: "published" | "reserved" | "booked";
     fuel?: Doc<"vehicles">["fuel"];
     transmission?: Doc<"vehicles">["transmission"];
     spec?: Doc<"vehicles">["spec"];
@@ -303,10 +340,35 @@ export function matchesPublicFilters(
     ownership?: Doc<"vehicles">["ownership"];
   },
 ): boolean {
+  const keyword = filters.keyword?.trim().toLowerCase();
+  if (keyword) {
+    const haystack = [
+      vehicle.searchText,
+      vehicle.stockCode,
+      vehicle.make,
+      vehicle.model,
+      vehicle.titleEn,
+      vehicle.titleAr,
+    ]
+      .join(" ")
+      .toLowerCase();
+    if (!haystack.includes(keyword)) {
+      return false;
+    }
+  }
   if (filters.make && vehicle.make.toLowerCase() !== filters.make.toLowerCase()) {
     return false;
   }
-  if (filters.model && !vehicle.model.toLowerCase().includes(filters.model.toLowerCase())) {
+  if (filters.model && vehicle.model.toLowerCase() !== filters.model.toLowerCase()) {
+    return false;
+  }
+  if (
+    filters.color &&
+    vehicle.exteriorColor.toLowerCase() !== filters.color.toLowerCase()
+  ) {
+    return false;
+  }
+  if (filters.status && publicFloorStatus(vehicle) !== filters.status) {
     return false;
   }
   if (filters.minPrice !== undefined && vehicle.priceOmr < filters.minPrice) {
@@ -357,8 +419,11 @@ export async function applyVehicleStatus(
   ctx: MutationCtx,
   args: {
     vehicleId: Id<"vehicles">;
-    status: Doc<"vehicles">["status"];
+    status: VehicleStatus;
     staffNotes?: string;
+    reason?: string;
+    notes?: string;
+    actorUserId?: Id<"users">;
   },
 ): Promise<boolean> {
   const vehicle = await ctx.db.get("vehicles", args.vehicleId);
@@ -366,13 +431,94 @@ export async function applyVehicleStatus(
     return false;
   }
 
+  const fromStatus = mapLegacyVehicleStatus(vehicle.status);
+  if (requiresStatusReason(args.status)) {
+    requireStatusReason(args.status, args.reason);
+  }
+
+  const releasingHold =
+    args.status === "published" &&
+    (fromStatus === "reserved" || fromStatus === "booked");
+
+  if (
+    (args.status === "published" || args.status === "approved_for_publishing") &&
+    !releasingHold
+  ) {
+    const inspection = await latestInspection(ctx, vehicle._id);
+    const gate = canPublish(vehicle, inspection, Date.now());
+    const alreadyPublished = fromStatus === "published" && args.status === "published";
+    if (!gate.ok && !alreadyPublished) {
+      await logAudit(ctx, {
+        actorUserId: args.actorUserId,
+        vehicleId: vehicle._id,
+        editType: "publish_blocked",
+        fromValue: fromStatus,
+        toValue: args.status,
+        notes: gate.reasons.join(","),
+      });
+      throw new ConvexError(`Cannot publish: ${gate.reasons.join(", ")}`);
+    }
+    if (
+      args.status === "published" &&
+      vehicle.onSiteConfirmed !== true &&
+      !gate.grandfathered
+    ) {
+      throw new ConvexError("Cannot publish: not_on_site");
+    }
+  }
+
   const now = Date.now();
   await ctx.db.patch("vehicles", args.vehicleId, {
     status: args.status,
     staffNotes: args.staffNotes ?? vehicle.staffNotes,
+    publicHidden:
+      args.status === "published" || args.status === "reserved" || args.status === "booked"
+        ? false
+        : vehicle.publicHidden,
     publishedAt:
       args.status === "published" ? (vehicle.publishedAt ?? now) : vehicle.publishedAt,
     updatedAt: now,
+  });
+
+  if (fromStatus !== args.status) {
+    await logVehicleStatusChange(ctx, {
+      vehicleId: args.vehicleId,
+      actorUserId: args.actorUserId,
+      fromStatus,
+      toStatus: args.status,
+      reason: args.reason,
+      notes: args.notes ?? args.staffNotes,
+    });
+  }
+  return true;
+}
+
+export async function applyPublicHidden(
+  ctx: MutationCtx,
+  args: {
+    vehicleId: Id<"vehicles">;
+    publicHidden: boolean;
+    actorUserId?: Id<"users">;
+  },
+): Promise<boolean> {
+  const vehicle = await ctx.db.get("vehicles", args.vehicleId);
+  if (!vehicle) {
+    return false;
+  }
+  const wasHidden = isPublicHidden(vehicle);
+  if (wasHidden === args.publicHidden) {
+    return true;
+  }
+  await ctx.db.patch("vehicles", args.vehicleId, {
+    publicHidden: args.publicHidden,
+    updatedAt: Date.now(),
+  });
+  await logAudit(ctx, {
+    actorUserId: args.actorUserId,
+    vehicleId: args.vehicleId,
+    editType: "public_hidden",
+    fromValue: wasHidden ? "true" : "false",
+    toValue: args.publicHidden ? "true" : "false",
   });
   return true;
 }
@@ -397,6 +543,7 @@ export async function deleteVehicleWithAssets(
   if (vehicle.contractStorageId) {
     await ctx.storage.delete(vehicle.contractStorageId);
   }
+  await deleteVehicleRelatedRows(ctx, vehicleId);
   await ctx.db.delete("vehicles", vehicleId);
   return true;
 }

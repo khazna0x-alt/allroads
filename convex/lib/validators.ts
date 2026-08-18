@@ -6,12 +6,91 @@ export const staffRoleValidator = v.union(
 );
 
 export const vehicleStatusValidator = v.union(
+  v.literal("new"),
+  v.literal("under_review"),
+  v.literal("inspection_scheduled"),
+  v.literal("under_inspection"),
+  v.literal("awaiting_contract"),
+  v.literal("approved"),
+  v.literal("not_accepted"),
+  v.literal("approved_for_publishing"),
+  v.literal("published"),
+  v.literal("reserved"),
+  v.literal("booked"),
+  v.literal("sold"),
+  v.literal("withdrawn"),
+  v.literal("expired"),
+);
+
+/** Accept V2 statuses plus pre-migration values so schema push does not reject live rows. */
+export const storedVehicleStatusValidator = v.union(
+  vehicleStatusValidator,
   v.literal("pending_review"),
   v.literal("draft"),
-  v.literal("published"),
   v.literal("hidden"),
-  v.literal("sold"),
   v.literal("rejected"),
+);
+
+export const publicFloorStatusValidator = v.union(
+  v.literal("published"),
+  v.literal("reserved"),
+  v.literal("booked"),
+);
+
+export const publicSortValidator = v.union(
+  v.literal("newest"),
+  v.literal("price_asc"),
+  v.literal("price_desc"),
+  v.literal("mileage_asc"),
+);
+
+export const photoAngleValidator = v.union(
+  v.literal("front"),
+  v.literal("rear"),
+  v.literal("side"),
+  v.literal("interior"),
+  v.literal("seats"),
+  v.literal("dash"),
+  v.literal("wheels"),
+  v.literal("engine"),
+  v.literal("trunk"),
+  v.literal("damage"),
+);
+
+export const contractStatusValidator = v.union(
+  v.literal("unsigned"),
+  v.literal("awaiting_signature"),
+  v.literal("signed"),
+  v.literal("expired"),
+  v.literal("cancelled"),
+);
+
+export const inspectionVerdictValidator = v.union(
+  v.literal("accepted"),
+  v.literal("accepted_with_notes"),
+  v.literal("not_accepted"),
+);
+
+export const ownershipDocKindValidator = v.literal("ownership");
+
+export const auditEditTypeValidator = v.union(
+  v.literal("status_change"),
+  v.literal("public_hidden"),
+  v.literal("field_edit"),
+  v.literal("consignment_submit"),
+  v.literal("staff_notify"),
+  v.literal("publish_blocked"),
+  v.literal("migration"),
+  v.literal("inspection_saved"),
+  v.literal("contract_update"),
+  v.literal("contract_expiry_alert"),
+  v.literal("contract_expired"),
+  v.literal("inquiry_submit"),
+  v.literal("whatsapp_intent"),
+  v.literal("booking_submit"),
+  v.literal("booking_update"),
+  v.literal("booking_expired"),
+  v.literal("payment_update"),
 );
 
 export const ownershipValidator = v.union(
@@ -67,12 +146,50 @@ export const inquirySourceValidator = v.union(
   v.literal("web_form"),
   v.literal("consignment"),
   v.literal("waagents"),
+  v.literal("whatsapp"),
 );
 
 export const inquiryStatusValidator = v.union(
   v.literal("new"),
-  v.literal("in_progress"),
+  v.literal("contacted"),
+  v.literal("viewing_scheduled"),
+  v.literal("negotiating"),
+  v.literal("booked"),
+  v.literal("sold"),
   v.literal("closed"),
+  v.literal("in_progress"),
+);
+
+export const preferredContactValidator = v.union(
+  v.literal("phone"),
+  v.literal("whatsapp"),
+  v.literal("email"),
+);
+
+export const bookingStatusValidator = v.union(
+  v.literal("reserved"),
+  v.literal("booked"),
+  v.literal("cancelled"),
+  v.literal("expired"),
+);
+
+export const bookingDurationDaysValidator = v.union(
+  v.literal(3),
+  v.literal(7),
+  v.literal(14),
+);
+
+export const paymentMethodValidator = v.union(
+  v.literal("bank_transfer"),
+  v.literal("gateway_later"),
+);
+
+export const paymentStatusValidator = v.union(
+  v.literal("pending"),
+  v.literal("paid"),
+  v.literal("failed"),
+  v.literal("cancelled"),
+  v.literal("refunded"),
 );
 
 export const missingImportStrategyValidator = v.union(
@@ -110,6 +227,11 @@ export const vehicleWriteValidator = {
   ownerPhone: v.optional(v.string()),
   ownerNotes: v.optional(v.string()),
   staffNotes: v.optional(v.string()),
+  publicHidden: v.optional(v.boolean()),
+  onSiteConfirmed: v.optional(v.boolean()),
+  contractStatus: v.optional(contractStatusValidator),
+  contractStartsAt: v.optional(v.number()),
+  contractEndsAt: v.optional(v.number()),
 };
 
 export const publicVehicleValidator = v.object({
@@ -139,6 +261,11 @@ export const publicVehicleValidator = v.object({
   descriptionEn: v.string(),
   ownership: ownershipValidator,
   featured: v.boolean(),
+  status: publicFloorStatusValidator,
+  updatedAt: v.number(),
+  inspectedAt: v.optional(v.number()),
+  depositOmr: v.number(),
+  canBook: v.boolean(),
   photos: v.array(
     v.object({
       url: v.string(),
@@ -177,6 +304,16 @@ export const staffVehicleValidator = v.object({
   ownership: ownershipValidator,
   status: vehicleStatusValidator,
   featured: v.boolean(),
+  publicHidden: v.boolean(),
+  onSiteConfirmed: v.boolean(),
+  onSiteConfirmedAt: v.optional(v.number()),
+  contractStatus: v.optional(contractStatusValidator),
+  contractStartsAt: v.optional(v.number()),
+  contractEndsAt: v.optional(v.number()),
+  hasContractFile: v.boolean(),
+  publishGrandfathered: v.boolean(),
+  publishReady: v.boolean(),
+  publishBlockers: v.array(v.string()),
   ownerName: v.optional(v.string()),
   ownerPhone: v.optional(v.string()),
   ownerNotes: v.optional(v.string()),
@@ -193,8 +330,39 @@ export const staffVehicleValidator = v.object({
       sortOrder: v.number(),
       altAr: v.string(),
       altEn: v.string(),
+      angle: v.optional(photoAngleValidator),
     }),
   ),
+});
+
+export const staffInspectionPhotoValidator = v.object({
+  _id: v.id("inspectionPhotos"),
+  url: v.union(v.string(), v.null()),
+  caption: v.string(),
+  sortOrder: v.number(),
+});
+
+export const staffInspectionValidator = v.object({
+  _id: v.id("inspections"),
+  vehicleId: v.id("vehicles"),
+  verdict: v.optional(inspectionVerdictValidator),
+  inspectorName: v.optional(v.string()),
+  inspectedAt: v.optional(v.number()),
+  notes: v.optional(v.string()),
+  chassisMatchesDocs: v.optional(v.boolean()),
+  bodyNotes: v.optional(v.string()),
+  paintNotes: v.optional(v.string()),
+  accidentHistory: v.optional(v.string()),
+  engineNotes: v.optional(v.string()),
+  transmissionNotes: v.optional(v.string()),
+  acNotes: v.optional(v.string()),
+  interiorNotes: v.optional(v.string()),
+  tiresNotes: v.optional(v.string()),
+  actualMileageKm: v.optional(v.number()),
+  ownershipReview: v.optional(v.string()),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+  photos: v.array(staffInspectionPhotoValidator),
 });
 
 export const staffUserValidator = v.object({

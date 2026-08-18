@@ -32,13 +32,14 @@ export async function AboutSection() {
               className="absolute -end-6 -bottom-6 z-0 size-48 rounded-lg bg-[var(--crimson)] opacity-50"
               aria-hidden="true"
             />
-            <div className="relative z-10 h-[min(500px,70vw)] w-full overflow-hidden rounded-lg shadow-2xl md:h-[500px]">
+            <div className="relative z-10 flex h-[min(500px,70vw)] w-full items-center justify-center overflow-hidden rounded-lg bg-[var(--ink)] shadow-2xl md:h-[500px]">
               <Image
-                src="/about.jpg"
+                src="/allroadslogo.png"
                 alt={t("imageAlt")}
-                fill
-                sizes="(max-width: 768px) 100vw, 40vw"
-                className="object-cover"
+                width={1080}
+                height={1130}
+                sizes="(max-width: 768px) 70vw, 28rem"
+                className="h-auto w-[min(72%,22rem)] object-contain drop-shadow-[0_0_48px_rgba(212,175,55,0.16)]"
               />
             </div>
           </div>

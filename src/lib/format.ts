@@ -13,6 +13,31 @@ export function formatKm(value: number, locale: string): string {
   return locale === "ar" ? `${amount} كم` : `${amount} km`;
 }
 
+export function formatDate(value: number, locale: string): string {
+  return new Intl.DateTimeFormat(locale === "ar" ? "ar-OM" : "en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
+export function cylindersFromEngine(engine?: string): number | undefined {
+  if (!engine) {
+    return undefined;
+  }
+  const labeled = engine.match(/(\d+)\s*(?:cyl|cylinders?|سلندر)/i);
+  if (labeled) {
+    const count = Number(labeled[1]);
+    return Number.isFinite(count) ? count : undefined;
+  }
+  const vee = engine.match(/\bV(\d+)\b/i);
+  if (vee) {
+    const count = Number(vee[1]);
+    return Number.isFinite(count) ? count : undefined;
+  }
+  return undefined;
+}
+
 export function displayVehicleTitle(
   vehicle: {
     titleAr?: string;

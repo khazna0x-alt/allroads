@@ -210,13 +210,28 @@ export const seedSampleVehicles = internalMutation({
 
     const now = Date.now();
     for (const sample of sampleVehicles) {
-      await ctx.db.insert("vehicles", {
+      const vehicleId = await ctx.db.insert("vehicles", {
         ...sample,
         slug: buildVehicleSlug(sample),
         searchText: buildVehicleSearchText(sample),
         ownership: "dealership",
         status: "published",
+        publicHidden: false,
+        onSiteConfirmed: true,
+        onSiteConfirmedAt: now,
+        publishGrandfathered: true,
+        contractStatus: "signed",
         publishedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      });
+      await ctx.db.insert("inspections", {
+        vehicleId,
+        verdict: "accepted",
+        inspectorName: "system",
+        inspectedAt: now,
+        notes: "Seeded showroom example",
+        chassisMatchesDocs: true,
         createdAt: now,
         updatedAt: now,
       });
@@ -272,8 +287,12 @@ export const alignFeaturedExamples = internalMutation({
       .query("vehicles")
       .withIndex("by_stock_code", (q) => q.eq("stockCode", "AR-1004"))
       .unique();
-    if (porsche && porsche.status !== "hidden") {
-      await ctx.db.patch("vehicles", porsche._id, { status: "hidden", updatedAt: now });
+    if (porsche && porsche.publicHidden !== true) {
+      await ctx.db.patch("vehicles", porsche._id, {
+        status: "withdrawn",
+        publicHidden: true,
+        updatedAt: now,
+      });
     }
 
     const cruiser = await ctx.db

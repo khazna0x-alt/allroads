@@ -7,7 +7,9 @@ import { useState } from "react";
 import { AdminButton, AdminField, AdminSelect, AdminTextarea, DeskCard } from "@/components/admin/ui";
 import { api, type Id } from "@/lib/convex";
 import { PhotoUploader } from "./PhotoUploader";
-import { ContractUploader } from "./ContractUploader";
+import { ContractDesk } from "./ContractDesk";
+import { InspectionForm } from "./InspectionForm";
+import { OwnerDeskActions } from "./OwnerDeskActions";
 
 type VehicleValues = {
   stockCode?: string;
@@ -38,8 +40,31 @@ type VehicleValues = {
   ownerPhone?: string;
   ownerNotes?: string;
   staffNotes?: string;
+  publicHidden?: boolean;
+  onSiteConfirmed?: boolean;
+  contractStatus?: "unsigned" | "awaiting_signature" | "signed" | "expired" | "cancelled";
+  contractStartsAt?: number;
+  contractEndsAt?: number;
   contractFileName?: string;
   contractUrl?: string | null;
+  publishReady?: boolean;
+  publishBlockers?: string[];
+  publishGrandfathered?: boolean;
+  status?:
+    | "new"
+    | "under_review"
+    | "inspection_scheduled"
+    | "under_inspection"
+    | "awaiting_contract"
+    | "approved"
+    | "not_accepted"
+    | "approved_for_publishing"
+    | "published"
+    | "reserved"
+    | "booked"
+    | "sold"
+    | "withdrawn"
+    | "expired";
 };
 
 export function VehicleForm({
@@ -89,14 +114,48 @@ export function VehicleForm({
       ownerPhone: String(formData.get("ownerPhone") ?? "") || undefined,
       ownerNotes: String(formData.get("ownerNotes") ?? "") || undefined,
       staffNotes: String(formData.get("staffNotes") ?? "") || undefined,
+      publicHidden: formData.get("publicHidden") === "on",
+      onSiteConfirmed: formData.get("onSiteConfirmed") === "on",
     };
 
     setSaving(true);
     try {
+      const write = {
+        stockCode: payload.stockCode,
+        vin: payload.vin,
+        make: payload.make,
+        model: payload.model,
+        year: payload.year,
+        trim: payload.trim,
+        priceOmr: payload.priceOmr,
+        mileageKm: payload.mileageKm,
+        fuel: payload.fuel,
+        transmission: payload.transmission,
+        drivetrain: payload.drivetrain,
+        spec: payload.spec,
+        condition: payload.condition,
+        bodyType: payload.bodyType,
+        exteriorColor: payload.exteriorColor,
+        interiorColor: payload.interiorColor,
+        engine: payload.engine,
+        features: payload.features,
+        titleAr: payload.titleAr,
+        titleEn: payload.titleEn,
+        descriptionAr: payload.descriptionAr,
+        descriptionEn: payload.descriptionEn,
+        ownership: payload.ownership,
+        featured: payload.featured,
+        ownerName: payload.ownerName,
+        ownerPhone: payload.ownerPhone,
+        ownerNotes: payload.ownerNotes,
+        staffNotes: payload.staffNotes,
+        publicHidden: payload.publicHidden,
+        onSiteConfirmed: payload.onSiteConfirmed,
+      };
       if (vehicleId) {
-        await update({ vehicleId, ...payload });
+        await update({ vehicleId, ...write });
       } else {
-        const id = await create(payload);
+        const id = await create(write);
         router.push(`/admin/inventory/${id}`);
         return;
       }
@@ -108,6 +167,7 @@ export function VehicleForm({
   }
 
   return (
+    <div className="space-y-6">
     <form action={onSubmit} className="space-y-6">
       <DeskCard>
         <h2 className="font-display text-xl">{t("inventory.sections.identity")}</h2>
@@ -140,6 +200,24 @@ export function VehicleForm({
               className="size-4 accent-[var(--sand)]"
             />
             {t("inventory.featured")}
+          </label>
+          <label className="flex min-h-11 items-center gap-3 text-sm">
+            <input
+              type="checkbox"
+              name="onSiteConfirmed"
+              defaultChecked={initial?.onSiteConfirmed}
+              className="size-4 accent-[var(--sand)]"
+            />
+            {t("inventory.onSite")}
+          </label>
+          <label className="flex min-h-11 items-center gap-3 text-sm">
+            <input
+              type="checkbox"
+              name="publicHidden"
+              defaultChecked={initial?.publicHidden}
+              className="size-4 accent-[var(--sand)]"
+            />
+            {t("inventory.publicHidden")}
           </label>
         </div>
       </DeskCard>
@@ -252,20 +330,6 @@ export function VehicleForm({
         </div>
       </DeskCard>
 
-      <DeskCard>
-        <h2 className="font-display text-xl">{t("inventory.sections.contract")}</h2>
-        <p className="mt-2 text-sm text-[var(--ivory-dim)]">{t("fields.contract")}</p>
-        {vehicleId ? (
-          <ContractUploader
-            vehicleId={vehicleId}
-            contractUrl={initial?.contractUrl}
-            contractFileName={initial?.contractFileName}
-          />
-        ) : (
-          <p className="mt-4 text-sm text-[var(--ivory-dim)]">{t("inventory.saveFirstContract")}</p>
-        )}
-      </DeskCard>
-
       {error ? (
         <p className="text-sm text-[#f2c4c6]" role="alert">
           {error}
@@ -274,11 +338,42 @@ export function VehicleForm({
       <AdminButton type="submit" variant="primary" className="w-full" disabled={saving}>
         {t("inventory.save")}
       </AdminButton>
+    </form>
       {vehicleId ? (
-        <PhotoUploader vehicleId={vehicleId} />
+        <div className="space-y-6">
+          <DeskCard>
+            <h2 className="font-display text-xl">{t("consignments.approveForPublish")}</h2>
+            <div className="mt-4">
+              <OwnerDeskActions
+                vehicle={{
+                  _id: vehicleId,
+                  status: initial?.status ?? "approved",
+                  publishReady: initial?.publishReady ?? false,
+                  publishBlockers: initial?.publishBlockers ?? [],
+                  publishGrandfathered: initial?.publishGrandfathered,
+                  onSiteConfirmed: initial?.onSiteConfirmed === true,
+                  contractEndsAt: initial?.contractEndsAt,
+                  staffNotes: initial?.staffNotes,
+                }}
+                showNotes={false}
+                showEditLink={false}
+              />
+            </div>
+          </DeskCard>
+          <ContractDesk
+            vehicleId={vehicleId}
+            contractStatus={initial?.contractStatus}
+            contractStartsAt={initial?.contractStartsAt}
+            contractEndsAt={initial?.contractEndsAt}
+            contractUrl={initial?.contractUrl}
+            contractFileName={initial?.contractFileName}
+          />
+          <InspectionForm vehicleId={vehicleId} />
+          <PhotoUploader vehicleId={vehicleId} />
+        </div>
       ) : (
         <p className="text-sm text-[var(--ivory-dim)]">{t("inventory.saveFirstPhotos")}</p>
       )}
-    </form>
+    </div>
   );
 }

@@ -11,12 +11,20 @@ import {
 } from "react";
 
 export const staffInventoryStatuses = [
+  "new",
+  "under_review",
+  "inspection_scheduled",
+  "under_inspection",
+  "awaiting_contract",
+  "approved",
+  "not_accepted",
+  "approved_for_publishing",
   "published",
-  "draft",
-  "pending_review",
-  "hidden",
+  "reserved",
+  "booked",
   "sold",
-  "rejected",
+  "withdrawn",
+  "expired",
 ] as const;
 
 export type StaffInventoryStatus = (typeof staffInventoryStatuses)[number];
@@ -146,18 +154,46 @@ export const AdminButton = forwardRef<
 AdminButton.displayName = "AdminButton";
 
 const vehicleStatusTone: Record<string, string> = {
+  new: "border-[var(--crimson)]/60 bg-[var(--crimson)]/15 text-[#f2c4c6]",
+  under_review: "border-[var(--crimson)]/60 bg-[var(--crimson)]/15 text-[#f2c4c6]",
+  inspection_scheduled: "border-[var(--sand)]/50 bg-[var(--sand)]/12 text-[var(--sand-bright)]",
+  under_inspection: "border-[var(--sand)]/50 bg-[var(--sand)]/12 text-[var(--sand-bright)]",
+  awaiting_contract: "border-[var(--sand)]/50 bg-[var(--sand)]/12 text-[var(--sand-bright)]",
+  approved: "border-[var(--line)] text-[var(--ivory-dim)]",
+  not_accepted: "border-[var(--crimson)]/45 text-[#f2c4c6]",
+  approved_for_publishing: "border-[var(--sand)]/50 bg-[var(--sand)]/12 text-[var(--sand-bright)]",
   published: "border-[var(--sand)]/50 bg-[var(--sand)]/12 text-[var(--sand-bright)]",
-  draft: "border-[var(--line)] text-[var(--ivory-dim)]",
-  pending_review: "border-[var(--crimson)]/60 bg-[var(--crimson)]/15 text-[#f2c4c6]",
-  hidden: "border-[var(--line)] text-[var(--ivory-dim)]",
+  reserved: "border-[var(--sand)]/35 text-[var(--sand)]",
+  booked: "border-[var(--sand)]/35 text-[var(--sand)]",
   sold: "border-[var(--sand)]/35 text-[var(--sand)]",
-  rejected: "border-[var(--crimson)]/45 text-[#f2c4c6]",
+  withdrawn: "border-[var(--line)] text-[var(--ivory-dim)]",
+  expired: "border-[var(--line)] text-[var(--ivory-dim)]",
 };
 
 const inquiryStatusTone: Record<string, string> = {
   new: "border-[var(--crimson)]/60 bg-[var(--crimson)]/15 text-[#f2c4c6]",
-  in_progress: "border-[var(--sand)]/50 bg-[var(--sand)]/12 text-[var(--sand-bright)]",
+  contacted: "border-[var(--sand)]/50 bg-[var(--sand)]/12 text-[var(--sand-bright)]",
+  viewing_scheduled: "border-[var(--sand)]/50 bg-[var(--sand)]/12 text-[var(--sand-bright)]",
+  negotiating: "border-[var(--sand)]/50 bg-[var(--sand)]/12 text-[var(--sand-bright)]",
+  booked: "border-[var(--sand)]/35 text-[var(--sand)]",
+  sold: "border-[var(--sand)]/35 text-[var(--sand)]",
   closed: "border-[var(--line)] text-[var(--ivory-dim)]",
+  in_progress: "border-[var(--sand)]/50 bg-[var(--sand)]/12 text-[var(--sand-bright)]",
+};
+
+const bookingStatusTone: Record<string, string> = {
+  reserved: "border-[var(--sand)]/50 bg-[var(--sand)]/12 text-[var(--sand-bright)]",
+  booked: "border-[var(--sand)]/35 text-[var(--sand)]",
+  cancelled: "border-[var(--crimson)]/45 text-[#f2c4c6]",
+  expired: "border-[var(--line)] text-[var(--ivory-dim)]",
+};
+
+const paymentStatusTone: Record<string, string> = {
+  pending: "border-[var(--crimson)]/60 bg-[var(--crimson)]/15 text-[#f2c4c6]",
+  paid: "border-[var(--sand)]/50 bg-[var(--sand)]/12 text-[var(--sand-bright)]",
+  failed: "border-[var(--crimson)]/45 text-[#f2c4c6]",
+  cancelled: "border-[var(--line)] text-[var(--ivory-dim)]",
+  refunded: "border-[var(--line)] text-[var(--ivory-dim)]",
 };
 
 export function StatusBadge({
@@ -165,11 +201,25 @@ export function StatusBadge({
   kind = "vehicle",
 }: {
   value: string;
-  kind?: "vehicle" | "inquiry";
+  kind?: "vehicle" | "inquiry" | "booking" | "payment";
 }) {
   const t = useTranslations("Admin");
-  const label = kind === "inquiry" ? t(`inquiryStatus.${value}`) : t(`status.${value}`);
-  const tone = kind === "inquiry" ? inquiryStatusTone[value] : vehicleStatusTone[value];
+  const label =
+    kind === "inquiry"
+      ? t(`inquiryStatus.${value}`)
+      : kind === "booking"
+        ? t(`bookingStatus.${value}`)
+        : kind === "payment"
+          ? t(`paymentStatus.${value}`)
+          : t(`status.${value}`);
+  const tone =
+    kind === "inquiry"
+      ? inquiryStatusTone[value]
+      : kind === "booking"
+        ? bookingStatusTone[value]
+        : kind === "payment"
+          ? paymentStatusTone[value]
+          : vehicleStatusTone[value];
   return (
     <span
       className={`inline-flex min-h-7 items-center border px-2 text-[11px] tracking-[0.12em] uppercase ${tone ?? "border-[var(--line)]"}`}

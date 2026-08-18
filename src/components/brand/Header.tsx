@@ -1,6 +1,7 @@
 import { getLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { brand } from "@/lib/brand";
+import { publicNav } from "@/lib/nav";
 import { LocaleSwitcher } from "./LocaleSwitcher";
 import { Mark } from "./Mark";
 import { MobileNav } from "./MobileNav";
@@ -25,19 +26,12 @@ export async function Header() {
             </span>
           </span>
         </Link>
-        <nav className="hidden items-center gap-6 text-sm text-[var(--ivory-dim)] md:flex">
-          <Link href="/" className="hover:text-[var(--sand)]">
-            {t("home")}
-          </Link>
-          <Link href="/inventory" className="hover:text-[var(--sand)]">
-            {t("inventory")}
-          </Link>
-          <Link href="/consign" className="hover:text-[var(--sand)]">
-            {t("consign")}
-          </Link>
-          <Link href="/contact" className="hover:text-[var(--sand)]">
-            {t("contact")}
-          </Link>
+        <nav className="hidden items-center gap-4 text-[13px] text-[var(--ivory-dim)] lg:flex lg:gap-5 lg:text-sm">
+          {publicNav.map((item) => (
+            <Link key={item.key} href={item.href} className="hover:text-[var(--sand)]">
+              {t(item.key)}
+            </Link>
+          ))}
         </nav>
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <LocaleSwitcher />

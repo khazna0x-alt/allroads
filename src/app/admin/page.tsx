@@ -15,7 +15,22 @@ import {
 import { api } from "@/lib/convex";
 import { displayVehicleTitle } from "@/lib/format";
 
-const STATUSES = ["published", "draft", "pending_review", "hidden", "sold", "rejected"] as const;
+const STATUSES = [
+  "new",
+  "under_review",
+  "inspection_scheduled",
+  "under_inspection",
+  "awaiting_contract",
+  "approved",
+  "not_accepted",
+  "approved_for_publishing",
+  "published",
+  "reserved",
+  "booked",
+  "sold",
+  "withdrawn",
+  "expired",
+] as const;
 
 export default function AdminHomePage() {
   const t = useTranslations("Admin.overview");
@@ -29,11 +44,12 @@ export default function AdminHomePage() {
   const pending = useQuery(api.vehicles.listRecentPending, { limit: 5 });
   const inquiries = useQuery(api.inquiries.listRecent, { limit: 6 });
   const inquiryStats = useQuery(api.inquiries.deskStats);
+  const bookingStats = useQuery(api.bookings.deskStats);
   const role = me?.role ? tRoles(me.role) : "";
-  const queueCount = stats?.byStatus.pending_review ?? 0;
+  const queueCount = stats?.queueCount ?? 0;
   const newLeads = inquiryStats?.newCount ?? 0;
   const maxStatus = stats ? Math.max(...STATUSES.map((status) => stats.byStatus[status]), 1) : 1;
-  const ready = Boolean(stats && pending && inquiries && inquiryStats);
+  const ready = Boolean(stats && pending && inquiries && inquiryStats && bookingStats);
   const needsDecision = queueCount > 0 || newLeads > 0;
 
   return (
@@ -56,7 +72,7 @@ export default function AdminHomePage() {
       />
       <GoldRule />
 
-      {ready && stats && pending && inquiries && inquiryStats ? (
+      {ready && stats && pending && inquiries && inquiryStats && bookingStats ? (
         <div className="admin-desk-stack mt-8">
           {needsDecision ? (
             <Link href={queueCount > 0 ? "/admin/consignments" : "/admin/inquiries"} className="admin-attention admin-reveal block">
@@ -73,10 +89,10 @@ export default function AdminHomePage() {
               href="/admin/inventory?status=published"
               label={t("onTheFloor")}
               hint={t("onTheFloorHint")}
-              value={stats.byStatus.published}
+              value={stats.onFloor}
               hero
             />
-            <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
               <Metric
                 href="/admin/inventory?status=published"
                 label={t("featured")}
@@ -87,8 +103,8 @@ export default function AdminHomePage() {
                 href="/admin/consignments"
                 label={t("queue")}
                 hint={t("queueHint")}
-                value={stats.byStatus.pending_review}
-                alert={stats.byStatus.pending_review > 0}
+                value={stats.queueCount}
+                alert={stats.queueCount > 0}
               />
               <Metric
                 href="/admin/inquiries"
@@ -96,6 +112,13 @@ export default function AdminHomePage() {
                 hint={t("newLeadsHint")}
                 value={inquiryStats.newCount}
                 alert={inquiryStats.newCount > 0}
+              />
+              <Metric
+                href="/admin/bookings"
+                label={t("holds")}
+                hint={t("holdsHint")}
+                value={bookingStats.reservedCount + bookingStats.bookedCount}
+                alert={bookingStats.reservedCount > 0}
               />
             </div>
           </div>
@@ -107,7 +130,7 @@ export default function AdminHomePage() {
               {STATUSES.map((status) => {
                 const count = stats.byStatus[status];
                 const width = Math.max(4, Math.round((count / maxStatus) * 100));
-                const hot = status === "pending_review" && count > 0;
+                const hot = (status === "new" || status === "under_review") && count > 0;
                 return (
                   <li key={status}>
                     <Link

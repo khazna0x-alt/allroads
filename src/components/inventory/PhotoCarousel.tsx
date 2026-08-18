@@ -36,11 +36,13 @@ export function PhotoCarousel({
   className = "",
   sizes = "card",
   label,
+  onPhotoClick,
 }: {
   photos: CarouselPhoto[];
   className?: string;
   sizes?: "card" | "detail";
   label?: string;
+  onPhotoClick?: (index: number) => void;
 }) {
   const t = useTranslations("Inventory");
   const [index, setIndex] = useState(0);
@@ -48,8 +50,10 @@ export function PhotoCarousel({
   const [reduceMotion, setReduceMotion] = useState(false);
   const [resumeToken, setResumeToken] = useState(0);
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
+  const didSwipe = useRef(false);
   const count = photos.length;
-  const current = photos[Math.min(index, Math.max(count - 1, 0))];
+  const currentIndex = count === 0 ? 0 : Math.min(index, count - 1);
+  const current = photos[currentIndex];
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -58,13 +62,6 @@ export function PhotoCarousel({
     media.addEventListener("change", sync);
     return () => media.removeEventListener("change", sync);
   }, []);
-
-  useEffect(() => {
-    if (index < count) {
-      return;
-    }
-    setIndex(0);
-  }, [count, index]);
 
   useEffect(() => {
     if (count < 2 || paused || reduceMotion) {
@@ -127,6 +124,7 @@ export function PhotoCarousel({
     }
     event.preventDefault();
     event.stopPropagation();
+    didSwipe.current = true;
     blockFollowingClick();
     step(dx < 0 ? 1 : -1);
   }
@@ -146,10 +144,21 @@ export function PhotoCarousel({
 
   return (
     <div
-      className={`photo-carousel relative overflow-hidden bg-[var(--ink-soft)] ${aspect} ${className}`}
+      className={`photo-carousel relative overflow-hidden bg-[var(--ink-soft)] ${aspect} ${className} ${
+        onPhotoClick ? "cursor-zoom-in" : ""
+      }`}
       role="region"
       aria-roledescription="carousel"
       aria-label={label}
+      onClick={() => {
+        if (didSwipe.current) {
+          didSwipe.current = false;
+          return;
+        }
+        if (onPhotoClick) {
+          onPhotoClick(currentIndex);
+        }
+      }}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onTouchStart={onTouchStart}
@@ -169,8 +178,11 @@ export function PhotoCarousel({
           src={photo.url}
           alt={photo.alt}
           className={`pointer-events-none absolute inset-0 h-full w-full object-cover transition-[opacity,transform] duration-700 ${
-            photoIndex === index ? "opacity-100" : "opacity-0"
+            photoIndex === currentIndex ? "opacity-100" : "opacity-0"
           } ${sizes === "card" ? "group-hover:scale-105" : ""}`}
+          loading={photoIndex === currentIndex ? "eager" : "lazy"}
+          decoding="async"
+          fetchPriority={photoIndex === currentIndex && sizes === "detail" ? "high" : "low"}
         />
       ))}
       {count > 1 ? (
@@ -179,7 +191,7 @@ export function PhotoCarousel({
             type="button"
             aria-label={t("prevPhoto")}
             className={`${arrowClass} left-3`}
-            onClick={(event) => onControlClick(event, index - 1)}
+            onClick={(event) => onControlClick(event, currentIndex - 1)}
           >
             <Chevron direction="left" />
           </button>
@@ -187,7 +199,7 @@ export function PhotoCarousel({
             type="button"
             aria-label={t("nextPhoto")}
             className={`${arrowClass} right-3`}
-            onClick={(event) => onControlClick(event, index + 1)}
+            onClick={(event) => onControlClick(event, currentIndex + 1)}
           >
             <Chevron direction="right" />
           </button>
@@ -198,9 +210,9 @@ export function PhotoCarousel({
                   key={`${photo.url}-${photoIndex}`}
                   type="button"
                   aria-label={`${photoIndex + 1} / ${count}`}
-                  aria-current={photoIndex === index ? "true" : undefined}
+                  aria-current={photoIndex === currentIndex ? "true" : undefined}
                   className={`pointer-events-auto h-1.5 rounded-full transition-all ${
-                    photoIndex === index
+                    photoIndex === currentIndex
                       ? "w-7 bg-[var(--sand)]"
                       : "w-1.5 bg-white/45 hover:bg-white/80"
                   }`}
@@ -211,7 +223,7 @@ export function PhotoCarousel({
                   key={`${photo.url}-${photoIndex}`}
                   aria-hidden="true"
                   className={`h-1.5 rounded-full transition-all ${
-                    photoIndex === index ? "w-7 bg-[var(--sand)]" : "w-1.5 bg-white/45"
+                    photoIndex === currentIndex ? "w-7 bg-[var(--sand)]" : "w-1.5 bg-white/45"
                   }`}
                 />
               ),

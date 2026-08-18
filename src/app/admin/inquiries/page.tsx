@@ -13,15 +13,30 @@ import {
 import { useConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { api, type Id } from "@/lib/convex";
 
+const INQUIRY_STATUSES = [
+  "new",
+  "contacted",
+  "viewing_scheduled",
+  "negotiating",
+  "booked",
+  "sold",
+  "closed",
+  "in_progress",
+] as const;
+
 type StaffInquiry = {
   _id: Id<"inquiries">;
   name: string;
   phone: string;
+  email?: string;
   subject: string;
   message: string;
   locale: "ar" | "en";
-  source: "web_form" | "consignment" | "waagents";
-  status: "new" | "in_progress" | "closed";
+  source: "web_form" | "consignment" | "waagents" | "whatsapp";
+  status: (typeof INQUIRY_STATUSES)[number];
+  preferredContact?: "phone" | "whatsapp" | "email";
+  viewingRequested: boolean;
+  handoffReason?: string;
   createdAt: number;
   vehicleTitleEn?: string;
   vehicleTitleAr?: string;
@@ -37,23 +52,15 @@ export default function InquiriesPage() {
   const setStatus = useMutation(api.inquiries.setStatus);
   const remove = useMutation(api.inquiries.remove);
 
-  async function closeInquiry(inquiryId: Id<"inquiries">) {
-    await setStatus({ inquiryId, status: "closed" });
-  }
-
-  async function reopenInquiry(inquiryId: Id<"inquiries">) {
-    await setStatus({ inquiryId, status: "new" });
-  }
-
   async function deleteInquiry(inquiry: StaffInquiry) {
-    const ok = await confirm({
+    const result = await confirm({
       title: t("confirm.deleteInquiryTitle"),
       message: t("confirm.deleteInquiry", { name: inquiry.name }),
       confirmLabel: t("inquiries.delete"),
       cancelLabel: t("confirm.cancel"),
       tone: "danger",
     });
-    if (!ok) {
+    if (!result.confirmed) {
       return;
     }
     await remove({ inquiryId: inquiry._id });
@@ -63,14 +70,16 @@ export default function InquiriesPage() {
     <div>
       <PageHeader kicker={t("inquiries.kicker")} title={t("inquiries.title")} lead={t("inquiries.lead")} />
       <GoldRule />
+      <p className="mt-6 max-w-3xl border border-[var(--line)] px-4 py-3 text-sm text-[var(--ivory-dim)] text-pretty">
+        {t("inquiries.botNote")}
+      </p>
       <div className="mt-8 space-y-4">
         {(open ?? []).map((inquiry) => (
           <InquiryCard
             key={inquiry._id}
             inquiry={inquiry}
             locale={locale}
-            onInProgress={() => void setStatus({ inquiryId: inquiry._id, status: "in_progress" })}
-            onClose={() => void closeInquiry(inquiry._id)}
+            onStatus={(status) => void setStatus({ inquiryId: inquiry._id, status })}
             onDelete={() => void deleteInquiry(inquiry)}
           />
         ))}
@@ -95,8 +104,7 @@ export default function InquiriesPage() {
                 key={inquiry._id}
                 inquiry={inquiry}
                 locale={locale}
-                closed
-                onReopen={() => void reopenInquiry(inquiry._id)}
+                onStatus={(status) => void setStatus({ inquiryId: inquiry._id, status })}
                 onDelete={() => void deleteInquiry(inquiry)}
               />
             ))}
@@ -110,18 +118,12 @@ export default function InquiriesPage() {
 function InquiryCard({
   inquiry,
   locale,
-  closed = false,
-  onInProgress,
-  onClose,
-  onReopen,
+  onStatus,
   onDelete,
 }: {
   inquiry: StaffInquiry;
   locale: string;
-  closed?: boolean;
-  onInProgress?: () => void;
-  onClose?: () => void;
-  onReopen?: () => void;
+  onStatus: (status: StaffInquiry["status"]) => void;
   onDelete: () => void;
 }) {
   const t = useTranslations("Admin");
@@ -136,13 +138,38 @@ function InquiryCard({
               {t(`inquirySource.${inquiry.source}`)}
             </p>
             <StatusBadge kind="inquiry" value={inquiry.status} />
+            {inquiry.viewingRequested ? (
+              <span className="border border-[var(--sand)]/40 px-2 py-0.5 text-[11px] tracking-[0.12em] uppercase text-[var(--sand)]">
+                {t("inquiries.viewing")}
+              </span>
+            ) : null}
+            {inquiry.handoffReason ? (
+              <span className="border border-[var(--crimson)]/40 px-2 py-0.5 text-[11px] tracking-[0.12em] uppercase text-[var(--crimson)]">
+                {t("inquiries.handoff")}
+              </span>
+            ) : null}
           </div>
           <h2 className="font-display mt-2 text-2xl break-words">{inquiry.name}</h2>
           <p className="mt-1 break-words" dir="ltr">
             {inquiry.phone}
           </p>
+          {inquiry.email ? (
+            <p className="mt-1 break-words text-sm text-[var(--ivory-dim)]" dir="ltr">
+              {inquiry.email}
+            </p>
+          ) : null}
+          {inquiry.preferredContact ? (
+            <p className="mt-1 text-sm text-[var(--ivory-dim)]">
+              {t("inquiries.preferred")}: {t(`preferredContact.${inquiry.preferredContact}`)}
+            </p>
+          ) : null}
           <p className="mt-3 break-words font-medium">{inquiry.subject}</p>
           <p className="mt-2 break-words text-[var(--ivory-dim)] text-pretty">{inquiry.message}</p>
+          {inquiry.handoffReason ? (
+            <p className="mt-2 text-sm text-[var(--sand)]">
+              {t("inquiries.handoff")}: {inquiry.handoffReason}
+            </p>
+          ) : null}
           <p className="mt-3 text-xs text-[var(--ivory-dim)]">
             <DeskTime value={inquiry.createdAt} />
             {inquiry.vehicleStockCode
@@ -151,17 +178,21 @@ function InquiryCard({
             {vehicleTitle ? ` · ${vehicleTitle}` : ""}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {closed ? (
-            <AdminButton onClick={onReopen}>{t("inquiries.reopen")}</AdminButton>
-          ) : (
-            <>
-              {inquiry.status !== "in_progress" ? (
-                <AdminButton onClick={onInProgress}>{t("inquiries.inProgress")}</AdminButton>
-              ) : null}
-              <AdminButton onClick={onClose}>{t("inquiries.close")}</AdminButton>
-            </>
-          )}
+        <div className="flex min-w-44 flex-col gap-2">
+          <label className="text-sm">
+            <span className="mb-1 block text-[var(--ivory-dim)]">{t("inquiries.status")}</span>
+            <select
+              className="admin-field"
+              value={inquiry.status}
+              onChange={(event) => onStatus(event.target.value as StaffInquiry["status"])}
+            >
+              {INQUIRY_STATUSES.map((status) => (
+                <option key={status} value={status}>
+                  {t(`inquiryStatus.${status}`)}
+                </option>
+              ))}
+            </select>
+          </label>
           <AdminButton variant="danger" onClick={onDelete}>
             {t("inquiries.delete")}
           </AdminButton>

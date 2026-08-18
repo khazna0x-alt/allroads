@@ -373,6 +373,14 @@ html[dir="rtl"] .inventory-skeleton {
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .reveal-2,
+  .reveal-3 {
+    animation: none;
+  }
+}
+
 input,
 select,
 textarea,
@@ -831,5 +839,32 @@ html[dir="rtl"] .admin-plate-alert {
 @media (min-width: 1024px) {
   .admin-bulk-bar {
     inset-inline-start: 16.5rem;
+  }
+}
+
+@media print {
+  .admin-no-print,
+  .admin-sidebar,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  .admin-desk {
+    background: #fff !important;
+    color: #111 !important;
+  }
+
+  .inspection-print,
+  .inspection-print-page {
+    background: #fff;
+    color: #111;
+    border: none;
+    box-shadow: none;
+  }
+
+  .inspection-print dt,
+  .inspection-print p,
+  .inspection-print figcaption {
+    color: #333 !important;
   }
 }
