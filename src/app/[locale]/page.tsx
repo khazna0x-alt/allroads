@@ -44,7 +44,8 @@ export default async function HomePage({
                 {hero("lead")}
               </p>
               <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                <Link href="/inventory" className="btn-primary">
+                <Link href="/inventory" className="btn-primary gap-2.5">
+                  <ShowroomIcon />
                   {hero("ctaBrowse")}
                 </Link>
                 <Link href="/consign" className="btn-secondary">
@@ -114,8 +115,9 @@ export default async function HomePage({
             </p>
             <h2 className="font-display mt-3 text-3xl sm:text-4xl">{inventory("homeTitle")}</h2>
           </div>
-          <Link href="/inventory" className="shrink-0 text-sm text-[var(--sand)] underline">
-            {inventory("title")}
+          <Link href="/inventory" className="btn-secondary gap-2.5 shrink-0">
+            <ShowroomIcon />
+            {hero("ctaBrowse")}
           </Link>
         </div>
         <FeaturedCars />
@@ -165,4 +167,26 @@ function ServiceCard({
   }
 
   return <article className={cardClassName}>{content}</article>;
+}
+
+function ShowroomIcon() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+      className="shrink-0"
+    >
+      <path
+        d="M3 13.5 5.2 8.2A2 2 0 0 1 7 7h10a2 2 0 0 1 1.8 1.2L21 13.5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+      />
+      <path d="M3 13.5h18V19H3v-5.5z" stroke="currentColor" strokeWidth="1.6" />
+      <circle cx="7.2" cy="16.2" r="1.35" stroke="currentColor" strokeWidth="1.6" />
+      <circle cx="16.8" cy="16.2" r="1.35" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
+  );
 }

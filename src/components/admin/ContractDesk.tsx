@@ -7,6 +7,7 @@ import { ContractUploader } from "@/components/admin/ContractUploader";
 import { AdminButton, AdminField, AdminSelect, DeskCard } from "@/components/admin/ui";
 import { dateInputToMs, msToDateInput } from "@/lib/adminDates";
 import { api, type Id } from "@/lib/convex";
+import { convexErrorMessage } from "@/lib/convexError";
 
 const STATUSES = ["unsigned", "awaiting_signature", "signed", "expired", "cancelled"] as const;
 
@@ -36,14 +37,21 @@ export function ContractDesk({
     setSaving(true);
     setError("");
     try {
+      const contractStartsAt = dateInputToMs(String(formData.get("contractStartsAt") ?? ""));
+      const contractEndsAt = dateInputToMs(String(formData.get("contractEndsAt") ?? ""));
       await updateContract({
         vehicleId,
         contractStatus: status,
-        contractStartsAt: dateInputToMs(String(formData.get("contractStartsAt") ?? "")),
-        contractEndsAt: dateInputToMs(String(formData.get("contractEndsAt") ?? "")),
+        ...(contractStartsAt !== undefined ? { contractStartsAt } : {}),
+        ...(contractEndsAt !== undefined ? { contractEndsAt } : {}),
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("inventory.saveFailed"));
+      const message = convexErrorMessage(err, t("inventory.saveFailed"));
+      setError(
+        message === "Upload the signed contract copy first"
+          ? t("inventory.contractFileRequired")
+          : message,
+      );
     } finally {
       setSaving(false);
     }

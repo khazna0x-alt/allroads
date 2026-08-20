@@ -35,6 +35,12 @@ import {
   resolveArabicTitle,
 } from "./lib/vehicleCopy";
 
+function publicListingUrl(locale: "ar" | "en", slug: string): string {
+  const origin = "https://allroads.om";
+  const prefix = locale === "en" ? "/en" : "";
+  return `${origin}${prefix}/inventory/${slug}`;
+}
+
 const inquiryValidator = v.object({
   _id: v.id("inquiries"),
   name: v.string(),
@@ -150,6 +156,7 @@ export const createInquiry = mutation({
 
     let stockCode: string | undefined;
     let subject = args.subject.trim();
+    let message = args.message.trim();
     const vehicleId = args.vehicleId;
     if (vehicleId) {
       const vehicle = await ctx.db.get("vehicles", vehicleId);
@@ -157,9 +164,14 @@ export const createInquiry = mutation({
         throw new ConvexError("Vehicle is not available");
       }
       stockCode = vehicle.stockCode;
+      const title = args.locale === "ar" ? vehicle.titleAr : vehicle.titleEn;
       if (!subject) {
-        subject = `${vehicle.titleEn} · ${vehicle.stockCode}`;
+        subject = `${title} · ${vehicle.stockCode}`;
+      } else if (!subject.includes(vehicle.stockCode)) {
+        subject = `${subject} · ${title} · ${vehicle.stockCode}`;
       }
+      const listingUrl = publicListingUrl(args.locale, vehicle.slug);
+      message = `${message}\n\n${title}\n${vehicle.stockCode}\n${listingUrl}`;
     }
 
     const viewingRequested = args.viewingRequested === true;
@@ -168,7 +180,7 @@ export const createInquiry = mutation({
       phone,
       ...(email ? { email } : {}),
       subject,
-      message: args.message.trim(),
+      message,
       ...(vehicleId ? { vehicleId } : {}),
       locale: args.locale,
       source: args.source ?? "web_form",

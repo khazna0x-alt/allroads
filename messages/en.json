@@ -5,7 +5,7 @@
   },
   "Nav": {
     "home": "Home",
-    "inventory": "Cars",
+    "inventory": "Car Showroom",
     "consign": "List Your Car",
     "services": "Services",
     "howItWorks": "How it works",
@@ -197,6 +197,7 @@
     },
     "viewingRequest": "I would like to request a viewing appointment at the showroom",
     "captcha": "Human check: what is {a} + {b}?",
+    "captchaLabel": "Human check",
     "captchaError": "Incorrect answer, please try again.",
     "send": "Send Message",
     "consent": "By submitting, you agree to our",
@@ -205,7 +206,16 @@
     "success": "Thank you for reaching out. Our team will get back to you shortly.",
     "successViewing": "Thank you. The showroom has your viewing request and will confirm a time.",
     "general": "General Inquiry",
-    "displayed": "Inquire about Displayed Car",
+    "displayed": "Inquiry about a listed car",
+    "selectCar": "Listed car",
+    "selectCarPlaceholder": "Select a car from the showroom",
+    "selectCarRequired": "Please select a listed car.",
+    "otherDetails": "Please specify",
+    "otherDetailsPlaceholder": "Tell us what you need",
+    "otherDetailsRequired": "Please describe your inquiry.",
+    "noCars": "No cars are listed right now.",
+    "loadingCars": "Loading cars…",
+    "imageAlt": "All Roads Car Showroom in Al Amerat",
     "consignCtaTitle": "Consign a vehicle",
     "consignCtaBody": "Send your vehicle details on the consignment page. The showroom reviews every listing before it is published.",
     "consignCta": "Open consignment form"
@@ -313,14 +323,14 @@
     }
   },
   "HowItWorks": {
-    "eyebrow": "The journey",
+    "eyebrow": "The journey of selling and buying your car with us is an enjoyable one",
     "title": "How it works",
     "lead": "Ten steps to sell. Ten steps to buy. Nothing is published until inspection, contract, and floor confirm.",
-    "tablist": "Selling or buying",
-    "sellerTab": "Selling",
-    "buyerTab": "Buying",
+    "tablist": "How you sell or how you buy",
+    "sellerTab": "How you sell your car",
+    "buyerTab": "How you buy your car",
     "sellerLead": "From List Your Car to transfer. Nothing is published until inspection, contract, and floor confirm.",
-    "buyerLead": "From Cars to deposit and ROP transfer. What you see is what is on the floor.",
+    "buyerLead": "From the car showroom to deposit and transfer. What you see is what is on the floor.",
     "ctaList": "List Your Car",
     "ctaBrowse": "Browse Cars",
     "ctaContact": "Contact",
@@ -363,13 +373,13 @@
       },
       "10": {
         "title": "Sale / transfer",
-        "body": "Deposit, sale, and ROP ownership transfer on site."
+        "body": "Deposit, sale, and ownership transfer are handled through us."
       }
     },
     "buyerSteps": {
       "1": {
         "title": "Browse",
-        "body": "Open Cars for what is actually on the floor."
+        "body": "Open the car showroom for what is actually on the floor."
       },
       "2": {
         "title": "Search / filter",
@@ -397,15 +407,15 @@
       },
       "8": {
         "title": "Booking",
-        "body": "Hold the car. One active booking per listing."
+        "body": "You can only book one car per listing at a time."
       },
       "9": {
         "title": "Deposit",
-        "body": "5% (min 200 OMR) by bank transfer. Upload the receipt."
+        "body": "The deposit is paid as agreed in the contract."
       },
       "10": {
         "title": "Purchase / transfer",
-        "body": "Contract, remaining payment, and ROP transfer at the showroom."
+        "body": "The contract, remaining balance, and ownership transfer are handled per the contract terms."
       }
     }
   },
@@ -426,7 +436,7 @@
     "metaTitle": "3. Meta Compliance",
     "metaBody": "This policy complies with Meta Platforms' requirements for advertising and lead generation.",
     "toolsTitle": "4. Operations tools",
-    "toolsBody": "Inquiries, listing requests, and bookings are stored in our showroom dashboard. If the showroom later turns on Heffl, we may copy name, phone, and inquiry details there for follow-up only. Heffl is off today and never writes car status back to this website. Chassis numbers, contracts, and owner documents are not published on the public site or given to the website chat."
+    "toolsBody": "Inquiries, listing requests, and bookings are stored in our showroom dashboard. Chassis numbers, contracts, and owner documents are not published on the public site or given to the website chat."
   },
   "Terms": {
     "title": "Terms & Conditions",
@@ -469,11 +479,11 @@
     "title": "Booking & deposit terms",
     "intro": "These terms apply when you request a booking hold on a car listed at All Roads. They sit alongside the general website terms.",
     "depositTitle": "Deposit amount",
-    "depositBody": "The booking deposit is 5% of the asking price, with a minimum of 200 OMR, rounded up to the nearest 50 OMR. The amount is shown on the booking form before you submit. It is deducted from the sale price if the purchase completes.",
+    "depositBody": "The deposit amount is determined according to the contract terms agreed between the showroom and the car buyer.",
     "refundTitle": "Refunds and cancellation",
-    "refundBody": "If the showroom cancels the hold or cannot complete the sale, the deposit is refundable. If you cancel after the hold starts, any refund is confirmed by staff at the showroom. Refunds are logged against the booking; they are not processed by a card gateway.",
+    "refundBody": "The contract's terms and conditions apply.",
     "durationTitle": "Hold duration",
-    "durationBody": "You choose 3, 7, or 14 days. The car is marked reserved immediately. If the hold is still only reserved when the end date passes, it returns to available. Staff may approve the booking (booked) after the transfer, extend the dates, or cancel.",
+    "durationBody": "Any listed car can be booked by paying the agreed-upon deposit at contract signing, subject to all booking-duration terms stated in the contract.",
     "paymentTitle": "How you pay",
     "paymentBody": "Deposits are requested by bank transfer arranged with the showroom. This website does not take card payments and does not store card numbers. You may upload a transfer receipt for staff to match. A card gateway may be added later; it is not active now."
   },
@@ -656,6 +666,7 @@
       "save": "Save vehicle",
       "saveContract": "Save contract dates",
       "saveFailed": "Save failed",
+      "contractFileRequired": "Upload the signed contract copy first, then mark it signed.",
       "saveFirstPhotos": "Save first, then upload photos.",
       "saveFirstContract": "Save the vehicle first, then upload the consignment form.",
       "featured": "Featured on homepage",
@@ -704,6 +715,28 @@
         "owner": "Owner & staff notes",
         "contract": "Contract",
         "photos": "Gallery"
+      },
+      "wizard": {
+        "progress": "Vehicle details",
+        "stepOf": "Step {current} of {total}",
+        "steps": {
+          "identity": "Identity",
+          "specs": "Specs",
+          "copy": "Listing copy",
+          "owner": "Owner & staff notes",
+          "photos": "Photos"
+        },
+        "complete": "Complete",
+        "incomplete": "Needs details",
+        "missingCount": "{count} steps need details",
+        "allComplete": "All steps have the required details",
+        "save": "Save this step",
+        "saveContinue": "Save and continue",
+        "back": "Back",
+        "done": "Finish",
+        "saved": "Step saved",
+        "photosLocked": "Save Identity first to upload photos.",
+        "identityRequired": "Make, model, and year are required before this vehicle can be saved."
       }
     },
     "fields": {

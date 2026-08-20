@@ -1,11 +1,32 @@
 "use client";
 
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { AdminButton, AdminField, AdminSelect, AdminTextarea, DeskCard } from "@/components/admin/ui";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import {
+  AdminButton,
+  AdminField,
+  AdminSelect,
+  AdminTextarea,
+  DeskCard,
+  staffInventoryPath,
+  staffVehiclePath,
+} from "@/components/admin/ui";
+import { VehicleWizardProgress } from "@/components/admin/VehicleWizardProgress";
 import { api, type Id } from "@/lib/convex";
+import { convexErrorMessage } from "@/lib/convexError";
+import {
+  emptyVehicleDraft,
+  featuresFromText,
+  firstIncompleteStep,
+  identityComplete,
+  nextWizardStep,
+  parseWizardStep,
+  previousWizardStep,
+  type VehicleDraft,
+  type WizardStep,
+} from "@/lib/vehicleWizard";
 import { PhotoUploader } from "./PhotoUploader";
 import { ContractDesk } from "./ContractDesk";
 import { InspectionForm } from "./InspectionForm";
@@ -20,12 +41,12 @@ type VehicleValues = {
   trim?: string;
   priceOmr: number;
   mileageKm: number;
-  fuel: "petrol" | "diesel" | "hybrid" | "plugin_hybrid" | "electric";
-  transmission: "automatic" | "manual";
-  drivetrain: "awd" | "4wd" | "rwd" | "fwd";
-  spec: "gcc" | "american" | "other";
-  condition: "new" | "used";
-  bodyType: "suv" | "sedan" | "coupe" | "convertible" | "hatchback" | "wagon" | "pickup" | "van";
+  fuel: VehicleDraft["fuel"];
+  transmission: VehicleDraft["transmission"];
+  drivetrain: VehicleDraft["drivetrain"];
+  spec: VehicleDraft["spec"];
+  condition: VehicleDraft["condition"];
+  bodyType: VehicleDraft["bodyType"];
   exteriorColor: string;
   interiorColor: string;
   engine?: string;
@@ -34,7 +55,7 @@ type VehicleValues = {
   titleEn: string;
   descriptionAr: string;
   descriptionEn: string;
-  ownership: "dealership" | "consignment";
+  ownership: VehicleDraft["ownership"];
   featured?: boolean;
   ownerName?: string;
   ownerPhone?: string;
@@ -50,6 +71,7 @@ type VehicleValues = {
   publishReady?: boolean;
   publishBlockers?: string[];
   publishGrandfathered?: boolean;
+  photos?: { _id: string }[];
   status?:
     | "new"
     | "under_review"
@@ -67,6 +89,81 @@ type VehicleValues = {
     | "expired";
 };
 
+function draftFromInitial(initial?: VehicleValues): VehicleDraft {
+  const draft = emptyVehicleDraft();
+  if (!initial) {
+    return draft;
+  }
+  return {
+    ...draft,
+    stockCode: initial.stockCode ?? "",
+    vin: initial.vin ?? "",
+    make: initial.make,
+    model: initial.model,
+    year: initial.year,
+    trim: initial.trim ?? "",
+    priceOmr: initial.priceOmr,
+    mileageKm: initial.mileageKm,
+    fuel: initial.fuel,
+    transmission: initial.transmission,
+    drivetrain: initial.drivetrain,
+    spec: initial.spec,
+    condition: initial.condition,
+    bodyType: initial.bodyType,
+    exteriorColor: initial.exteriorColor,
+    interiorColor: initial.interiorColor,
+    engine: initial.engine ?? "",
+    featuresText: initial.features.join(", "),
+    titleAr: initial.titleAr,
+    titleEn: initial.titleEn,
+    descriptionAr: initial.descriptionAr,
+    descriptionEn: initial.descriptionEn,
+    ownership: initial.ownership,
+    featured: initial.featured === true,
+    ownerName: initial.ownerName ?? "",
+    ownerPhone: initial.ownerPhone ?? "",
+    ownerNotes: initial.ownerNotes ?? "",
+    staffNotes: initial.staffNotes ?? "",
+    publicHidden: initial.publicHidden === true,
+    onSiteConfirmed: initial.onSiteConfirmed === true,
+  };
+}
+
+function writePayload(draft: VehicleDraft) {
+  return {
+    stockCode: draft.stockCode.trim() || undefined,
+    vin: draft.vin.trim() || undefined,
+    make: draft.make.trim(),
+    model: draft.model.trim(),
+    year: draft.year,
+    trim: draft.trim.trim() || undefined,
+    priceOmr: draft.priceOmr,
+    mileageKm: draft.mileageKm,
+    fuel: draft.fuel,
+    transmission: draft.transmission,
+    drivetrain: draft.drivetrain,
+    spec: draft.spec,
+    condition: draft.condition,
+    bodyType: draft.bodyType,
+    exteriorColor: draft.exteriorColor,
+    interiorColor: draft.interiorColor,
+    engine: draft.engine.trim() || undefined,
+    features: featuresFromText(draft.featuresText),
+    titleAr: draft.titleAr,
+    titleEn: draft.titleEn,
+    descriptionAr: draft.descriptionAr,
+    descriptionEn: draft.descriptionEn,
+    ownership: draft.ownership,
+    featured: draft.featured,
+    ownerName: draft.ownerName.trim() || undefined,
+    ownerPhone: draft.ownerPhone.trim() || undefined,
+    ownerNotes: draft.ownerNotes.trim() || undefined,
+    staffNotes: draft.staffNotes.trim() || undefined,
+    publicHidden: draft.publicHidden,
+    onSiteConfirmed: draft.onSiteConfirmed,
+  };
+}
+
 export function VehicleForm({
   vehicleId,
   initial,
@@ -75,305 +172,554 @@ export function VehicleForm({
   initial?: VehicleValues;
 }) {
   const t = useTranslations("Admin");
+  const tw = useTranslations("Admin.inventory.wizard");
   const router = useRouter();
+  const searchParams = useSearchParams();
   const create = useMutation(api.vehicles.create);
   const update = useMutation(api.vehicles.update);
+  const live = useQuery(api.vehicles.getStaff, vehicleId ? { vehicleId } : "skip");
+  const [draft, setDraft] = useState(() => draftFromInitial(initial));
+  const [step, setStep] = useState<WizardStep>(
+    () =>
+      parseWizardStep(searchParams.get("step")) ??
+      (initial
+        ? firstIncompleteStep(draftFromInitial(initial), initial.photos?.length ?? 0)
+        : "identity"),
+  );
   const [error, setError] = useState("");
+  const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const photoCount = live?.photos.length ?? initial?.photos?.length ?? 0;
+  const photosLocked = !vehicleId;
+  const statusFilter = searchParams.get("status");
 
-  async function onSubmit(formData: FormData) {
-    const payload: VehicleValues = {
-      stockCode: String(formData.get("stockCode") ?? "") || undefined,
-      vin: String(formData.get("vin") ?? "") || undefined,
-      make: String(formData.get("make") ?? ""),
-      model: String(formData.get("model") ?? ""),
-      year: Number(formData.get("year")),
-      trim: String(formData.get("trim") ?? "") || undefined,
-      priceOmr: Number(formData.get("priceOmr")),
-      mileageKm: Number(formData.get("mileageKm")),
-      fuel: String(formData.get("fuel")) as VehicleValues["fuel"],
-      transmission: String(formData.get("transmission")) as VehicleValues["transmission"],
-      drivetrain: String(formData.get("drivetrain")) as VehicleValues["drivetrain"],
-      spec: String(formData.get("spec")) as VehicleValues["spec"],
-      condition: String(formData.get("condition")) as VehicleValues["condition"],
-      bodyType: String(formData.get("bodyType")) as VehicleValues["bodyType"],
-      exteriorColor: String(formData.get("exteriorColor") ?? ""),
-      interiorColor: String(formData.get("interiorColor") ?? ""),
-      engine: String(formData.get("engine") ?? "") || undefined,
-      features: String(formData.get("features") ?? "")
-        .split(",")
-        .map((item) => item.trim())
-        .filter(Boolean),
-      titleAr: String(formData.get("titleAr") ?? ""),
-      titleEn: String(formData.get("titleEn") ?? ""),
-      descriptionAr: String(formData.get("descriptionAr") ?? ""),
-      descriptionEn: String(formData.get("descriptionEn") ?? ""),
-      ownership: String(formData.get("ownership")) as VehicleValues["ownership"],
-      featured: formData.get("featured") === "on",
-      ownerName: String(formData.get("ownerName") ?? "") || undefined,
-      ownerPhone: String(formData.get("ownerPhone") ?? "") || undefined,
-      ownerNotes: String(formData.get("ownerNotes") ?? "") || undefined,
-      staffNotes: String(formData.get("staffNotes") ?? "") || undefined,
-      publicHidden: formData.get("publicHidden") === "on",
-      onSiteConfirmed: formData.get("onSiteConfirmed") === "on",
-    };
+  useEffect(() => {
+    if (!saved) {
+      return;
+    }
+    const timer = window.setTimeout(() => setSaved(false), 2500);
+    return () => window.clearTimeout(timer);
+  }, [saved]);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [step]);
+
+  function patch<K extends keyof VehicleDraft>(key: K, value: VehicleDraft[K]) {
+    setDraft((current) => ({ ...current, [key]: value }));
+  }
+
+  function syncStep(next: WizardStep, id: Id<"vehicles"> | undefined = vehicleId) {
+    setStep(next);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("step", next);
+    const path = id ? `/admin/inventory/${id}` : "/admin/inventory/new";
+    const query = params.toString();
+    router.replace(query ? `${path}?${query}` : path, { scroll: false });
+  }
+
+  async function persist(): Promise<Id<"vehicles"> | undefined> {
+    if (!identityComplete(draft)) {
+      setError(tw("identityRequired"));
+      syncStep("identity");
+      return undefined;
+    }
+    const write = writePayload(draft);
+    if (vehicleId) {
+      await update({ vehicleId, ...write });
+      return vehicleId;
+    }
+    return await create(write);
+  }
+
+  async function persistAndGo(target: WizardStep | "stay" | "finish") {
     setSaving(true);
+    setError("");
+    setSaved(false);
     try {
-      const write = {
-        stockCode: payload.stockCode,
-        vin: payload.vin,
-        make: payload.make,
-        model: payload.model,
-        year: payload.year,
-        trim: payload.trim,
-        priceOmr: payload.priceOmr,
-        mileageKm: payload.mileageKm,
-        fuel: payload.fuel,
-        transmission: payload.transmission,
-        drivetrain: payload.drivetrain,
-        spec: payload.spec,
-        condition: payload.condition,
-        bodyType: payload.bodyType,
-        exteriorColor: payload.exteriorColor,
-        interiorColor: payload.interiorColor,
-        engine: payload.engine,
-        features: payload.features,
-        titleAr: payload.titleAr,
-        titleEn: payload.titleEn,
-        descriptionAr: payload.descriptionAr,
-        descriptionEn: payload.descriptionEn,
-        ownership: payload.ownership,
-        featured: payload.featured,
-        ownerName: payload.ownerName,
-        ownerPhone: payload.ownerPhone,
-        ownerNotes: payload.ownerNotes,
-        staffNotes: payload.staffNotes,
-        publicHidden: payload.publicHidden,
-        onSiteConfirmed: payload.onSiteConfirmed,
-      };
-      if (vehicleId) {
-        await update({ vehicleId, ...write });
-      } else {
-        const id = await create(write);
-        router.push(`/admin/inventory/${id}`);
+      const id = await persist();
+      if (!id) {
+        setSaving(false);
         return;
       }
-      router.push("/admin/inventory");
-    } catch {
-      setError(t("inventory.saveFailed"));
+      if (target === "finish") {
+        router.push(staffInventoryPath(statusFilter));
+        return;
+      }
+      const dest = target === "stay" ? step : target;
+      setSaved(true);
+      if (!vehicleId) {
+        router.replace(staffVehiclePath(id, statusFilter, dest));
+        return;
+      }
+      if (dest !== step) {
+        syncStep(dest, id);
+      }
+    } catch (err) {
+      setError(convexErrorMessage(err, t("inventory.saveFailed")));
+    } finally {
       setSaving(false);
     }
   }
 
+  async function saveStep(advance: boolean) {
+    const dest = advance ? nextWizardStep(step) : undefined;
+    await persistAndGo(dest ?? "stay");
+  }
+
+  async function selectStep(nextStep: WizardStep) {
+    if (nextStep === step) {
+      return;
+    }
+    if (vehicleId || nextStep === "photos") {
+      await persistAndGo(nextStep);
+      return;
+    }
+    syncStep(nextStep);
+  }
+
+  async function finish() {
+    await persistAndGo("finish");
+  }
+
+  const previous = previousWizardStep(step);
+  const next = nextWizardStep(step);
+
   return (
     <div className="space-y-6">
-    <form action={onSubmit} className="space-y-6">
-      <DeskCard>
-        <h2 className="font-display text-xl">{t("inventory.sections.identity")}</h2>
-        <div className="mt-5 grid min-w-0 gap-4 md:grid-cols-2">
-          <AdminField name="stockCode" label={t("fields.stockCode")} defaultValue={initial?.stockCode} />
-          <AdminField name="vin" label={t("fields.vin")} defaultValue={initial?.vin} spellCheck={false} />
-          <AdminField name="make" label={t("fields.make")} defaultValue={initial?.make} required />
-          <AdminField name="model" label={t("fields.model")} defaultValue={initial?.model} required />
-          <AdminField
-            name="year"
-            label={t("fields.year")}
-            type="number"
-            inputMode="numeric"
-            defaultValue={initial?.year ?? 2020}
-            required
-          />
-          <AdminField name="trim" label={t("fields.trim")} defaultValue={initial?.trim} />
-          <AdminSelect
-            name="ownership"
-            label={t("fields.ownership")}
-            defaultValue={initial?.ownership ?? "dealership"}
-            options={["dealership", "consignment"]}
-            formatLabel={(value) => t(`options.ownership.${value}`)}
-          />
-          <label className="flex min-h-11 items-center gap-3 text-sm md:mt-7">
-            <input
-              type="checkbox"
-              name="featured"
-              defaultChecked={initial?.featured}
-              className="size-4 accent-[var(--sand)]"
-            />
-            {t("inventory.featured")}
-          </label>
-          <label className="flex min-h-11 items-center gap-3 text-sm">
-            <input
-              type="checkbox"
-              name="onSiteConfirmed"
-              defaultChecked={initial?.onSiteConfirmed}
-              className="size-4 accent-[var(--sand)]"
-            />
-            {t("inventory.onSite")}
-          </label>
-          <label className="flex min-h-11 items-center gap-3 text-sm">
-            <input
-              type="checkbox"
-              name="publicHidden"
-              defaultChecked={initial?.publicHidden}
-              className="size-4 accent-[var(--sand)]"
-            />
-            {t("inventory.publicHidden")}
-          </label>
-        </div>
-      </DeskCard>
+      <VehicleWizardProgress
+        step={step}
+        draft={draft}
+        photoCount={photoCount}
+        photosLocked={photosLocked}
+        onSelect={(nextStep) => void selectStep(nextStep)}
+      />
 
-      <DeskCard>
-        <h2 className="font-display text-xl">{t("inventory.sections.specs")}</h2>
-        <div className="mt-5 grid min-w-0 gap-4 md:grid-cols-2">
-          <AdminField
-            name="priceOmr"
-            label={t("fields.priceOmr")}
-            type="number"
-            inputMode="numeric"
-            defaultValue={initial?.priceOmr ?? 0}
-            required
+      {step !== "photos" ? (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void saveStep(Boolean(next));
+          }}
+          className="space-y-6"
+        >
+          <DeskCard>
+            <h2 className="font-display text-xl">{t(`inventory.sections.${sectionKey(step)}`)}</h2>
+            <div className="mt-5 grid min-w-0 gap-4 md:grid-cols-2">
+              {step === "identity" ? <IdentityFields draft={draft} patch={patch} /> : null}
+              {step === "specs" ? <SpecsFields draft={draft} patch={patch} /> : null}
+              {step === "copy" ? <CopyFields draft={draft} patch={patch} /> : null}
+              {step === "owner" ? <OwnerFields draft={draft} patch={patch} /> : null}
+            </div>
+          </DeskCard>
+          <WizardFooter
+            error={error}
+            saved={saved}
+            saving={saving}
+            previous={previous}
+            next={next}
+            onBack={() => previous && void selectStep(previous)}
+            onSave={() => void saveStep(false)}
           />
-          <AdminField
-            name="mileageKm"
-            label={t("fields.mileageKm")}
-            type="number"
-            inputMode="numeric"
-            defaultValue={initial?.mileageKm ?? 0}
-            required
+        </form>
+      ) : (
+        <div className="space-y-6">
+          {vehicleId ? (
+            <PhotoUploader vehicleId={vehicleId} />
+          ) : (
+            <DeskCard>
+              <h2 className="font-display text-xl">{t("inventory.sections.photos")}</h2>
+              <p className="mt-3 text-sm text-[var(--ivory-dim)]">{tw("photosLocked")}</p>
+            </DeskCard>
+          )}
+          <WizardFooter
+            error={error}
+            saved={saved}
+            saving={saving}
+            previous={previous}
+            next={undefined}
+            finish
+            onBack={() => previous && void selectStep(previous)}
+            onSave={() => void finish()}
           />
-          <AdminSelect
-            name="fuel"
-            label={t("fields.fuel")}
-            defaultValue={initial?.fuel ?? "petrol"}
-            options={["petrol", "diesel", "hybrid", "plugin_hybrid", "electric"]}
-            formatLabel={(value) => t(`options.fuel.${value}`)}
-          />
-          <AdminSelect
-            name="transmission"
-            label={t("fields.transmission")}
-            defaultValue={initial?.transmission ?? "automatic"}
-            options={["automatic", "manual"]}
-            formatLabel={(value) => t(`options.transmission.${value}`)}
-          />
-          <AdminSelect
-            name="drivetrain"
-            label={t("fields.drivetrain")}
-            defaultValue={initial?.drivetrain ?? "awd"}
-            options={["awd", "4wd", "rwd", "fwd"]}
-            formatLabel={(value) => t(`options.drivetrain.${value}`)}
-          />
-          <AdminSelect
-            name="spec"
-            label={t("fields.spec")}
-            defaultValue={initial?.spec ?? "gcc"}
-            options={["gcc", "american", "other"]}
-            formatLabel={(value) => t(`options.spec.${value}`)}
-          />
-          <AdminSelect
-            name="condition"
-            label={t("fields.condition")}
-            defaultValue={initial?.condition ?? "used"}
-            options={["new", "used"]}
-            formatLabel={(value) => t(`options.condition.${value}`)}
-          />
-          <AdminSelect
-            name="bodyType"
-            label={t("fields.bodyType")}
-            defaultValue={initial?.bodyType ?? "suv"}
-            options={["suv", "sedan", "coupe", "convertible", "hatchback", "wagon", "pickup", "van"]}
-            formatLabel={(value) => t(`options.bodyType.${value}`)}
-          />
-          <AdminField name="exteriorColor" label={t("fields.exteriorColor")} defaultValue={initial?.exteriorColor} />
-          <AdminField name="interiorColor" label={t("fields.interiorColor")} defaultValue={initial?.interiorColor} />
-          <AdminField name="engine" label={t("fields.engine")} defaultValue={initial?.engine} />
-          <AdminField name="features" label={t("fields.features")} defaultValue={initial?.features.join(", ")} />
+          {vehicleId ? (
+            <div className="space-y-6">
+              <DeskCard>
+                <h2 className="font-display text-xl">{t("consignments.approveForPublish")}</h2>
+                <div className="mt-4">
+                  <OwnerDeskActions
+                    vehicle={{
+                      _id: vehicleId,
+                      status: initial?.status ?? "approved",
+                      publishReady: initial?.publishReady ?? false,
+                      publishBlockers: initial?.publishBlockers ?? [],
+                      publishGrandfathered: initial?.publishGrandfathered,
+                      onSiteConfirmed: draft.onSiteConfirmed,
+                      contractEndsAt: initial?.contractEndsAt,
+                      staffNotes: draft.staffNotes,
+                    }}
+                    showNotes={false}
+                    showEditLink={false}
+                  />
+                </div>
+              </DeskCard>
+              <ContractDesk
+                vehicleId={vehicleId}
+                contractStatus={initial?.contractStatus}
+                contractStartsAt={initial?.contractStartsAt}
+                contractEndsAt={initial?.contractEndsAt}
+                contractUrl={initial?.contractUrl}
+                contractFileName={initial?.contractFileName}
+              />
+              <InspectionForm vehicleId={vehicleId} />
+            </div>
+          ) : null}
         </div>
-      </DeskCard>
+      )}
+    </div>
+  );
+}
 
-      <DeskCard>
-        <h2 className="font-display text-xl">{t("inventory.sections.copy")}</h2>
-        <div className="mt-5 grid min-w-0 gap-4 md:grid-cols-2">
-          <AdminField
-            name="titleAr"
-            label={t("fields.titleAr")}
-            defaultValue={initial?.titleAr}
-            required
-            className="md:col-span-2"
-            dir="rtl"
-          />
-          <AdminField
-            name="titleEn"
-            label={t("fields.titleEn")}
-            defaultValue={initial?.titleEn}
-            required
-            className="md:col-span-2"
-            dir="ltr"
-          />
-          <AdminTextarea name="descriptionAr" label={t("fields.descriptionAr")} defaultValue={initial?.descriptionAr} dir="rtl" />
-          <AdminTextarea name="descriptionEn" label={t("fields.descriptionEn")} defaultValue={initial?.descriptionEn} dir="ltr" />
-        </div>
-      </DeskCard>
+function sectionKey(step: WizardStep): "identity" | "specs" | "copy" | "owner" | "photos" {
+  return step;
+}
 
-      <DeskCard>
-        <h2 className="font-display text-xl">{t("inventory.sections.owner")}</h2>
-        <div className="mt-5 grid min-w-0 gap-4 md:grid-cols-2">
-          <AdminField name="ownerName" label={t("fields.ownerName")} defaultValue={initial?.ownerName} autoComplete="name" />
-          <AdminField
-            name="ownerPhone"
-            label={t("fields.ownerPhone")}
-            defaultValue={initial?.ownerPhone}
-            inputMode="tel"
-            autoComplete="tel"
-          />
-          <AdminTextarea name="ownerNotes" label={t("fields.ownerNotes")} defaultValue={initial?.ownerNotes} />
-          <AdminTextarea name="staffNotes" label={t("fields.staffNotes")} defaultValue={initial?.staffNotes} />
-        </div>
-      </DeskCard>
-
+function WizardFooter({
+  error,
+  saved,
+  saving,
+  previous,
+  next,
+  finish,
+  onBack,
+  onSave,
+}: {
+  error: string;
+  saved: boolean;
+  saving: boolean;
+  previous?: WizardStep;
+  next?: WizardStep;
+  finish?: boolean;
+  onBack: () => void;
+  onSave: () => void;
+}) {
+  const t = useTranslations("Admin.inventory");
+  const tw = useTranslations("Admin.inventory.wizard");
+  return (
+    <div className="space-y-3">
       {error ? (
         <p className="text-sm text-[#f2c4c6]" role="alert">
           {error}
         </p>
       ) : null}
-      <AdminButton type="submit" variant="primary" className="w-full" disabled={saving}>
-        {t("inventory.save")}
-      </AdminButton>
-    </form>
-      {vehicleId ? (
-        <div className="space-y-6">
-          <DeskCard>
-            <h2 className="font-display text-xl">{t("consignments.approveForPublish")}</h2>
-            <div className="mt-4">
-              <OwnerDeskActions
-                vehicle={{
-                  _id: vehicleId,
-                  status: initial?.status ?? "approved",
-                  publishReady: initial?.publishReady ?? false,
-                  publishBlockers: initial?.publishBlockers ?? [],
-                  publishGrandfathered: initial?.publishGrandfathered,
-                  onSiteConfirmed: initial?.onSiteConfirmed === true,
-                  contractEndsAt: initial?.contractEndsAt,
-                  staffNotes: initial?.staffNotes,
-                }}
-                showNotes={false}
-                showEditLink={false}
-              />
-            </div>
-          </DeskCard>
-          <ContractDesk
-            vehicleId={vehicleId}
-            contractStatus={initial?.contractStatus}
-            contractStartsAt={initial?.contractStartsAt}
-            contractEndsAt={initial?.contractEndsAt}
-            contractUrl={initial?.contractUrl}
-            contractFileName={initial?.contractFileName}
-          />
-          <InspectionForm vehicleId={vehicleId} />
-          <PhotoUploader vehicleId={vehicleId} />
+      {saved && !error ? (
+        <p className="text-sm text-[var(--sand)]" role="status">
+          {tw("saved")}
+        </p>
+      ) : null}
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-between">
+        <AdminButton type="button" variant="ghost" disabled={!previous || saving} onClick={onBack}>
+          {tw("back")}
+        </AdminButton>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          {finish ? null : (
+            <AdminButton type="button" disabled={saving} onClick={onSave}>
+              {tw("save")}
+            </AdminButton>
+          )}
+          <AdminButton
+            type={finish ? "button" : "submit"}
+            variant="primary"
+            disabled={saving}
+            onClick={finish ? onSave : undefined}
+          >
+            {finish ? tw("done") : next ? tw("saveContinue") : t("save")}
+          </AdminButton>
         </div>
-      ) : (
-        <p className="text-sm text-[var(--ivory-dim)]">{t("inventory.saveFirstPhotos")}</p>
-      )}
+      </div>
     </div>
+  );
+}
+
+function IdentityFields({
+  draft,
+  patch,
+}: {
+  draft: VehicleDraft;
+  patch: <K extends keyof VehicleDraft>(key: K, value: VehicleDraft[K]) => void;
+}) {
+  const t = useTranslations("Admin");
+  return (
+    <>
+      <AdminField
+        name="stockCode"
+        label={t("fields.stockCode")}
+        value={draft.stockCode}
+        onChange={(value) => patch("stockCode", value)}
+      />
+      <AdminField
+        name="vin"
+        label={t("fields.vin")}
+        value={draft.vin}
+        onChange={(value) => patch("vin", value)}
+        spellCheck={false}
+      />
+      <AdminField
+        name="make"
+        label={t("fields.make")}
+        value={draft.make}
+        onChange={(value) => patch("make", value)}
+        required
+      />
+      <AdminField
+        name="model"
+        label={t("fields.model")}
+        value={draft.model}
+        onChange={(value) => patch("model", value)}
+        required
+      />
+      <AdminField
+        name="year"
+        label={t("fields.year")}
+        type="number"
+        inputMode="numeric"
+        value={String(draft.year || "")}
+        onChange={(value) => patch("year", Number(value) || 0)}
+        required
+      />
+      <AdminField
+        name="trim"
+        label={t("fields.trim")}
+        value={draft.trim}
+        onChange={(value) => patch("trim", value)}
+      />
+      <AdminSelect
+        name="ownership"
+        label={t("fields.ownership")}
+        value={draft.ownership}
+        onChange={(value) => patch("ownership", value as VehicleDraft["ownership"])}
+        options={["dealership", "consignment"]}
+        formatLabel={(value) => t(`options.ownership.${value}`)}
+      />
+      <label className="flex min-h-11 items-center gap-3 text-sm md:mt-7">
+        <input
+          type="checkbox"
+          name="featured"
+          checked={draft.featured}
+          onChange={(event) => patch("featured", event.target.checked)}
+          className="size-4 accent-[var(--sand)]"
+        />
+        {t("inventory.featured")}
+      </label>
+      <label className="flex min-h-11 items-center gap-3 text-sm">
+        <input
+          type="checkbox"
+          name="onSiteConfirmed"
+          checked={draft.onSiteConfirmed}
+          onChange={(event) => patch("onSiteConfirmed", event.target.checked)}
+          className="size-4 accent-[var(--sand)]"
+        />
+        {t("inventory.onSite")}
+      </label>
+      <label className="flex min-h-11 items-center gap-3 text-sm">
+        <input
+          type="checkbox"
+          name="publicHidden"
+          checked={draft.publicHidden}
+          onChange={(event) => patch("publicHidden", event.target.checked)}
+          className="size-4 accent-[var(--sand)]"
+        />
+        {t("inventory.publicHidden")}
+      </label>
+    </>
+  );
+}
+
+function SpecsFields({
+  draft,
+  patch,
+}: {
+  draft: VehicleDraft;
+  patch: <K extends keyof VehicleDraft>(key: K, value: VehicleDraft[K]) => void;
+}) {
+  const t = useTranslations("Admin");
+  return (
+    <>
+      <AdminField
+        name="priceOmr"
+        label={t("fields.priceOmr")}
+        type="number"
+        inputMode="numeric"
+        value={String(draft.priceOmr || "")}
+        onChange={(value) => patch("priceOmr", Number(value) || 0)}
+        required
+      />
+      <AdminField
+        name="mileageKm"
+        label={t("fields.mileageKm")}
+        type="number"
+        inputMode="numeric"
+        value={String(draft.mileageKm)}
+        onChange={(value) => patch("mileageKm", Number(value) || 0)}
+        required
+      />
+      <AdminSelect
+        name="fuel"
+        label={t("fields.fuel")}
+        value={draft.fuel}
+        onChange={(value) => patch("fuel", value as VehicleDraft["fuel"])}
+        options={["petrol", "diesel", "hybrid", "plugin_hybrid", "electric"]}
+        formatLabel={(value) => t(`options.fuel.${value}`)}
+      />
+      <AdminSelect
+        name="transmission"
+        label={t("fields.transmission")}
+        value={draft.transmission}
+        onChange={(value) => patch("transmission", value as VehicleDraft["transmission"])}
+        options={["automatic", "manual"]}
+        formatLabel={(value) => t(`options.transmission.${value}`)}
+      />
+      <AdminSelect
+        name="drivetrain"
+        label={t("fields.drivetrain")}
+        value={draft.drivetrain}
+        onChange={(value) => patch("drivetrain", value as VehicleDraft["drivetrain"])}
+        options={["awd", "4wd", "rwd", "fwd"]}
+        formatLabel={(value) => t(`options.drivetrain.${value}`)}
+      />
+      <AdminSelect
+        name="spec"
+        label={t("fields.spec")}
+        value={draft.spec}
+        onChange={(value) => patch("spec", value as VehicleDraft["spec"])}
+        options={["gcc", "american", "other"]}
+        formatLabel={(value) => t(`options.spec.${value}`)}
+      />
+      <AdminSelect
+        name="condition"
+        label={t("fields.condition")}
+        value={draft.condition}
+        onChange={(value) => patch("condition", value as VehicleDraft["condition"])}
+        options={["new", "used"]}
+        formatLabel={(value) => t(`options.condition.${value}`)}
+      />
+      <AdminSelect
+        name="bodyType"
+        label={t("fields.bodyType")}
+        value={draft.bodyType}
+        onChange={(value) => patch("bodyType", value as VehicleDraft["bodyType"])}
+        options={["suv", "sedan", "coupe", "convertible", "hatchback", "wagon", "pickup", "van"]}
+        formatLabel={(value) => t(`options.bodyType.${value}`)}
+      />
+      <AdminField
+        name="exteriorColor"
+        label={t("fields.exteriorColor")}
+        value={draft.exteriorColor}
+        onChange={(value) => patch("exteriorColor", value)}
+      />
+      <AdminField
+        name="interiorColor"
+        label={t("fields.interiorColor")}
+        value={draft.interiorColor}
+        onChange={(value) => patch("interiorColor", value)}
+      />
+      <AdminField
+        name="engine"
+        label={t("fields.engine")}
+        value={draft.engine}
+        onChange={(value) => patch("engine", value)}
+      />
+      <AdminField
+        name="features"
+        label={t("fields.features")}
+        value={draft.featuresText}
+        onChange={(value) => patch("featuresText", value)}
+      />
+    </>
+  );
+}
+
+function CopyFields({
+  draft,
+  patch,
+}: {
+  draft: VehicleDraft;
+  patch: <K extends keyof VehicleDraft>(key: K, value: VehicleDraft[K]) => void;
+}) {
+  const t = useTranslations("Admin");
+  return (
+    <>
+      <AdminField
+        name="titleAr"
+        label={t("fields.titleAr")}
+        value={draft.titleAr}
+        onChange={(value) => patch("titleAr", value)}
+        className="md:col-span-2"
+        dir="rtl"
+      />
+      <AdminField
+        name="titleEn"
+        label={t("fields.titleEn")}
+        value={draft.titleEn}
+        onChange={(value) => patch("titleEn", value)}
+        className="md:col-span-2"
+        dir="ltr"
+      />
+      <AdminTextarea
+        name="descriptionAr"
+        label={t("fields.descriptionAr")}
+        value={draft.descriptionAr}
+        onChange={(value) => patch("descriptionAr", value)}
+        dir="rtl"
+      />
+      <AdminTextarea
+        name="descriptionEn"
+        label={t("fields.descriptionEn")}
+        value={draft.descriptionEn}
+        onChange={(value) => patch("descriptionEn", value)}
+        dir="ltr"
+      />
+    </>
+  );
+}
+
+function OwnerFields({
+  draft,
+  patch,
+}: {
+  draft: VehicleDraft;
+  patch: <K extends keyof VehicleDraft>(key: K, value: VehicleDraft[K]) => void;
+}) {
+  const t = useTranslations("Admin");
+  return (
+    <>
+      <AdminField
+        name="ownerName"
+        label={t("fields.ownerName")}
+        value={draft.ownerName}
+        onChange={(value) => patch("ownerName", value)}
+        autoComplete="name"
+      />
+      <AdminField
+        name="ownerPhone"
+        label={t("fields.ownerPhone")}
+        value={draft.ownerPhone}
+        onChange={(value) => patch("ownerPhone", value)}
+        inputMode="tel"
+        autoComplete="tel"
+      />
+      <AdminTextarea
+        name="ownerNotes"
+        label={t("fields.ownerNotes")}
+        value={draft.ownerNotes}
+        onChange={(value) => patch("ownerNotes", value)}
+      />
+      <AdminTextarea
+        name="staffNotes"
+        label={t("fields.staffNotes")}
+        value={draft.staffNotes}
+        onChange={(value) => patch("staffNotes", value)}
+      />
+    </>
   );
 }

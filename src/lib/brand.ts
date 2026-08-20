@@ -36,6 +36,19 @@ export const inquirySubjects = [
   {
     value: "displayed",
     ar: "الاستفسار عن سيارة معروضة",
-    en: "Inquire about Displayed Car",
+    en: "Inquiry about a listed car",
   },
+  { value: "financing", ar: "تمويل سيارة", en: "Car financing" },
+  { value: "sell", ar: "بيع سيارة", en: "Sell a car" },
+  { value: "insurance", ar: "التأمين", en: "Insurance" },
+  {
+    value: "unlisted",
+    ar: "شراء سيارة غير معروضة حالياً",
+    en: "Buy a car not currently listed",
+  },
+  { value: "valuation", ar: "تقييم سيارة", en: "Car valuation" },
+  { value: "other_services", ar: "خدمات أخرى", en: "Other services" },
+  { value: "other", ar: "أخرى", en: "Other" },
 ] as const;
+
+export type InquirySubjectValue = (typeof inquirySubjects)[number]["value"];

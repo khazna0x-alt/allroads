@@ -52,7 +52,11 @@ export async function applyContractFields(
 ): Promise<void> {
   const vehicle = args.vehicle;
   const nextStatus = args.contractStatus ?? vehicle.contractStatus;
-  if (nextStatus === "signed" && !vehicle.contractStorageId) {
+  if (
+    nextStatus === "signed" &&
+    !vehicle.contractStorageId &&
+    vehicle.publishGrandfathered !== true
+  ) {
     throw new ConvexError("Upload the signed contract copy first");
   }
 
@@ -63,16 +67,18 @@ export async function applyContractFields(
   const contractStatus = expiredByDate ? "expired" : nextStatus;
   const datesChanged =
     args.contractStartsAt !== undefined || args.contractEndsAt !== undefined;
+  const hideExpired = contractStatus === "expired" && isOnPublicFloor(vehicle);
 
   await ctx.db.patch("vehicles", vehicle._id, {
-    contractStatus,
-    contractStartsAt: args.contractStartsAt ?? vehicle.contractStartsAt,
-    contractEndsAt: args.contractEndsAt ?? vehicle.contractEndsAt,
-    contractExpiryAlertedAt: datesChanged ? undefined : vehicle.contractExpiryAlertedAt,
-    publicHidden:
-      contractStatus === "expired" && isOnPublicFloor(vehicle)
-        ? true
-        : vehicle.publicHidden,
+    ...(contractStatus !== undefined ? { contractStatus } : {}),
+    ...(args.contractStartsAt !== undefined || vehicle.contractStartsAt !== undefined
+      ? { contractStartsAt: args.contractStartsAt ?? vehicle.contractStartsAt }
+      : {}),
+    ...(args.contractEndsAt !== undefined || vehicle.contractEndsAt !== undefined
+      ? { contractEndsAt: args.contractEndsAt ?? vehicle.contractEndsAt }
+      : {}),
+    ...(datesChanged ? { contractExpiryAlertedAt: undefined } : {}),
+    ...(hideExpired ? { publicHidden: true } : {}),
     updatedAt: now,
   });
 

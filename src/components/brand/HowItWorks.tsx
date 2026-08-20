@@ -102,7 +102,7 @@ export function HowItWorks() {
           aria-controls="how-panel-sellers"
           tabIndex={isSellers ? 0 : -1}
           onClick={() => selectJourney("sellers")}
-          className={`min-h-11 border-e border-b-2 border-e-[var(--line)] px-4 text-[11px] font-semibold tracking-[0.2em] uppercase ${
+          className={`min-h-12 border-e border-b-2 border-e-[var(--line)] px-3 py-3 text-sm font-semibold leading-snug sm:px-4 ${
             isSellers
               ? "-mb-px border-b-[var(--sand)] text-[var(--sand)]"
               : "border-b-transparent text-[var(--ivory-dim)] hover:text-[var(--sand)]"
@@ -118,7 +118,7 @@ export function HowItWorks() {
           aria-controls="how-panel-buyers"
           tabIndex={isSellers ? -1 : 0}
           onClick={() => selectJourney("buyers")}
-          className={`min-h-11 border-b-2 px-4 text-[11px] font-semibold tracking-[0.2em] uppercase ${
+          className={`min-h-12 border-b-2 px-3 py-3 text-sm font-semibold leading-snug sm:px-4 ${
             isSellers
               ? "border-b-transparent text-[var(--ivory-dim)] hover:text-[var(--sand)]"
               : "-mb-px border-b-[var(--sand)] text-[var(--sand)]"

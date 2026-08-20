@@ -199,6 +199,35 @@ export const listPublishedFeed = query({
   },
 });
 
+const publicChoiceValidator = v.object({
+  _id: v.id("vehicles"),
+  slug: v.string(),
+  stockCode: v.string(),
+  year: v.number(),
+  make: v.string(),
+  model: v.string(),
+  titleAr: v.string(),
+  titleEn: v.string(),
+});
+
+export const listPublishedChoices = query({
+  args: {},
+  returns: v.array(publicChoiceValidator),
+  handler: async (ctx) => {
+    const vehicles = sortFloorVehicles(await takeFloorVehicles(ctx, 200), "newest");
+    return vehicles.map((vehicle) => ({
+      _id: vehicle._id,
+      slug: vehicle.slug,
+      stockCode: vehicle.stockCode,
+      year: vehicle.year,
+      make: vehicle.make,
+      model: vehicle.model,
+      titleAr: vehicle.titleAr,
+      titleEn: vehicle.titleEn,
+    }));
+  },
+});
+
 export const listSimilar = query({
   args: { slug: v.string() },
   returns: v.array(publicVehicleValidator),

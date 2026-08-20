@@ -1,11 +1,11 @@
 "use client";
 
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { FieldLabel } from "@/components/forms/FieldLabel";
 import { Link } from "@/i18n/navigation";
-import { inquirySubjects } from "@/lib/brand";
+import { inquirySubjects, type InquirySubjectValue } from "@/lib/brand";
 import { api, type Id } from "@/lib/convex";
 
 const PRESETS = ["available", "deposit", "book", "financing"] as const;
@@ -25,18 +25,27 @@ export function InquiryForm({
   const nav = useTranslations("Nav");
   const locale = useLocale();
   const createInquiry = useMutation(api.inquiries.createInquiry);
-  const [captcha] = useState(() => {
-    const a = Math.floor(Math.random() * 6) + 2;
-    const b = Math.floor(Math.random() * 6) + 1;
-    return { a, b, sum: a + b };
-  });
+  const [captcha, setCaptcha] = useState<{ a: number; b: number; sum: number } | null>(null);
   const [status, setStatus] = useState<"idle" | "ok" | "error">("idle");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [subjectKey, setSubjectKey] = useState<InquirySubjectValue>("general");
+  const [listedVehicleId, setListedVehicleId] = useState("");
+  const [otherDetails, setOtherDetails] = useState("");
   const [viewing, setViewing] = useState(false);
   const [preferredContact, setPreferredContact] = useState<"phone" | "whatsapp" | "email">(
     "whatsapp",
   );
+
+  const showCarPicker = !vehicleId && subjectKey === "displayed";
+  const cars = useQuery(api.public.listPublishedChoices, showCarPicker ? {} : "skip");
+  const attachedVehicleId = vehicleId ?? (listedVehicleId ? (listedVehicleId as Id<"vehicles">) : undefined);
+
+  useEffect(() => {
+    const a = Math.floor(Math.random() * 6) + 2;
+    const b = Math.floor(Math.random() * 6) + 1;
+    setCaptcha({ a, b, sum: a + b });
+  }, []);
 
   useEffect(() => {
     function syncHash() {
@@ -49,21 +58,44 @@ export function InquiryForm({
     return () => window.removeEventListener("hashchange", syncHash);
   }, []);
 
+  function subjectLabel(value: InquirySubjectValue): string {
+    const subject = inquirySubjects.find((item) => item.value === value);
+    if (!subject) {
+      return t("general");
+    }
+    return locale === "ar" ? subject.ar : subject.en;
+  }
+
   async function onSubmit(formData: FormData) {
     const answer = Number(formData.get("captcha"));
-    if (answer !== captcha.sum) {
+    if (!captcha || answer !== captcha.sum) {
       setStatus("error");
       setError(t("captchaError"));
+      return;
+    }
+
+    if (showCarPicker && !listedVehicleId) {
+      setStatus("error");
+      setError(t("selectCarRequired"));
+      return;
+    }
+
+    if (subjectKey === "other" && otherDetails.trim().length < 2) {
+      setStatus("error");
+      setError(t("otherDetailsRequired"));
       return;
     }
 
     const name = String(formData.get("name") ?? "");
     const phone = String(formData.get("phone") ?? "");
     const email = String(formData.get("email") ?? "").trim();
+    const label = subjectLabel(subjectKey);
     const subject =
       vehicleTitle && stockCode
         ? `${vehicleTitle} · ${stockCode}`
-        : String(formData.get("subject") ?? defaultSubject ?? t("general"));
+        : subjectKey === "other"
+          ? `${label}: ${otherDetails.trim()}`
+          : (defaultSubject ?? label);
 
     try {
       await createInquiry({
@@ -72,7 +104,7 @@ export function InquiryForm({
         email: email || undefined,
         subject,
         message,
-        vehicleId,
+        vehicleId: attachedVehicleId,
         locale: locale === "ar" ? "ar" : "en",
         source: "web_form",
         preferredContact,
@@ -135,13 +167,23 @@ export function InquiryForm({
           <select
             name="subject"
             required
-            defaultValue={defaultSubject ?? t("general")}
+            value={subjectKey}
+            onChange={(event) => {
+              const next = event.target.value as InquirySubjectValue;
+              setSubjectKey(next);
+              if (next !== "displayed") {
+                setListedVehicleId("");
+              }
+              if (next !== "other") {
+                setOtherDetails("");
+              }
+            }}
             className="field-input"
           >
             {inquirySubjects.map((subject) => {
               const label = locale === "ar" ? subject.ar : subject.en;
               return (
-                <option key={subject.value} value={label}>
+                <option key={subject.value} value={subject.value}>
                   {label}
                 </option>
               );
@@ -149,21 +191,65 @@ export function InquiryForm({
           </select>
         </label>
       )}
-      <div>
-        <p className="mb-2 text-sm text-[var(--ivory-dim)]">{t("presets")}</p>
-        <div className="flex flex-wrap gap-2">
-          {PRESETS.map((preset) => (
-            <button
-              key={preset}
-              type="button"
-              className="border border-[var(--line)] px-3 py-2 text-sm text-[var(--ivory)] hover:border-[var(--sand)] hover:text-[var(--sand)]"
-              onClick={() => setMessage(t(`preset.${preset}`))}
-            >
-              {t(`presetLabel.${preset}`)}
-            </button>
-          ))}
+      {showCarPicker ? (
+        <label className="block text-sm">
+          <FieldLabel label={t("selectCar")} required />
+          <select
+            name="listedVehicleId"
+            required
+            value={listedVehicleId}
+            onChange={(event) => setListedVehicleId(event.target.value)}
+            className="field-input"
+            disabled={cars === undefined}
+          >
+            <option value="">
+              {cars === undefined ? t("loadingCars") : t("selectCarPlaceholder")}
+            </option>
+            {cars?.map((car) => {
+              const title = locale === "ar" ? car.titleAr : car.titleEn;
+              return (
+                <option key={car._id} value={car._id}>
+                  {car.year} {title} · {car.stockCode}
+                </option>
+              );
+            })}
+          </select>
+          {cars && cars.length === 0 ? (
+            <p className="mt-2 text-sm text-[var(--ivory-dim)]">{t("noCars")}</p>
+          ) : null}
+        </label>
+      ) : null}
+      {vehicleId || subjectKey !== "other" ? null : (
+        <label className="block text-sm">
+          <FieldLabel label={t("otherDetails")} required />
+          <textarea
+            name="otherDetails"
+            required
+            rows={3}
+            className="field-input"
+            value={otherDetails}
+            onChange={(event) => setOtherDetails(event.target.value)}
+            placeholder={t("otherDetailsPlaceholder")}
+          />
+        </label>
+      )}
+      {attachedVehicleId ? (
+        <div>
+          <p className="mb-2 text-sm text-[var(--ivory-dim)]">{t("presets")}</p>
+          <div className="flex flex-wrap gap-2">
+            {PRESETS.map((preset) => (
+              <button
+                key={preset}
+                type="button"
+                className="border border-[var(--line)] px-3 py-2 text-sm text-[var(--ivory)] hover:border-[var(--sand)] hover:text-[var(--sand)]"
+                onClick={() => setMessage(t(`preset.${preset}`))}
+              >
+                {t(`presetLabel.${preset}`)}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      ) : null}
       <label className="block text-sm">
         <FieldLabel label={t("message")} required />
         <textarea
@@ -175,7 +261,7 @@ export function InquiryForm({
           onChange={(event) => setMessage(event.target.value)}
         />
       </label>
-      {vehicleId ? (
+      {attachedVehicleId ? (
         <label className="flex min-h-11 cursor-pointer items-start gap-3 text-sm">
           <input
             type="checkbox"
@@ -187,12 +273,16 @@ export function InquiryForm({
         </label>
       ) : null}
       <Field
-        label={t("captcha", { a: captcha.a, b: captcha.b })}
+        label={captcha ? t("captcha", { a: captcha.a, b: captcha.b }) : t("captchaLabel")}
         name="captcha"
         required
       />
       {error ? <p className="text-sm text-red-400">{error}</p> : null}
-      <button type="submit" className="btn-primary w-full">
+      <button
+        type="submit"
+        disabled={!captcha || (showCarPicker && cars === undefined)}
+        className="btn-primary w-full disabled:opacity-60"
+      >
         {t("send")}
       </button>
       <p className="text-xs text-gray-400">

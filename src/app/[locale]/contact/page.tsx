@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { WhatsAppButton } from "@/components/brand/WhatsAppButton";
 import { InquiryForm } from "@/components/forms/InquiryForm";
@@ -36,6 +37,25 @@ export default async function ContactPage({
 
       <div className="mt-10 grid gap-12 lg:grid-cols-2">
         <div className="min-w-0 space-y-8 text-[var(--ivory-dim)]">
+          <div className="relative mx-6 mt-4 mb-10 md:mx-0 md:mt-0">
+            <div
+              className="absolute -top-6 -start-6 z-0 size-32 rounded-lg border-2 border-[var(--sand)] opacity-50"
+              aria-hidden="true"
+            />
+            <div
+              className="absolute -end-6 -bottom-6 z-0 size-48 rounded-lg bg-[var(--crimson)] opacity-50"
+              aria-hidden="true"
+            />
+            <div className="relative z-10 h-[min(22rem,70vw)] w-full overflow-hidden rounded-lg bg-[var(--ink)] shadow-2xl sm:h-[26rem]">
+              <Image
+                src="/location.jpg"
+                alt={t("imageAlt")}
+                fill
+                sizes="(max-width: 1024px) 90vw, 28rem"
+                className="object-cover object-center"
+              />
+            </div>
+          </div>
           <div>
             <p className="text-[var(--sand)]">{t("phone")}</p>
             <a href={`tel:${brand.phoneE164}`} className="mt-2 block text-xl text-white sm:text-2xl" dir="ltr">

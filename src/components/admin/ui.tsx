@@ -38,11 +38,21 @@ export function staffInventoryPath(status?: string | null) {
   return valid ? `/admin/inventory?status=${valid}` : "/admin/inventory";
 }
 
-export function staffVehiclePath(vehicleId: string, status?: string | null) {
+export function staffVehiclePath(
+  vehicleId: string,
+  status?: string | null,
+  step?: string | null,
+) {
+  const params = new URLSearchParams();
   const valid = parseStaffInventoryStatus(status ?? null);
-  return valid
-    ? `/admin/inventory/${vehicleId}?status=${valid}`
-    : `/admin/inventory/${vehicleId}`;
+  if (valid) {
+    params.set("status", valid);
+  }
+  if (step) {
+    params.set("step", step);
+  }
+  const query = params.toString();
+  return query ? `/admin/inventory/${vehicleId}?${query}` : `/admin/inventory/${vehicleId}`;
 }
 
 export function staffNewVehiclePath(status?: string | null) {
@@ -324,19 +334,32 @@ export function AdminTextarea({
   name,
   label,
   defaultValue,
+  value,
+  onChange,
   dir,
   className = "",
 }: {
   name: string;
   label: string;
   defaultValue?: string;
+  value?: string;
+  onChange?: (value: string) => void;
   dir?: "rtl" | "ltr";
   className?: string;
 }) {
   return (
     <label className={`min-w-0 text-sm md:col-span-2 ${className}`}>
       <span className="mb-2 block text-[var(--ivory-dim)]">{label}</span>
-      <textarea name={name} defaultValue={defaultValue} dir={dir} rows={4} className="admin-field" autoComplete="off" />
+      <textarea
+        name={name}
+        defaultValue={value === undefined ? defaultValue : undefined}
+        value={value}
+        onChange={onChange ? (event) => onChange(event.target.value) : undefined}
+        dir={dir}
+        rows={4}
+        className="admin-field"
+        autoComplete="off"
+      />
     </label>
   );
 }
@@ -345,6 +368,8 @@ export function AdminSelect({
   name,
   label,
   defaultValue,
+  value,
+  onChange,
   options,
   formatLabel,
   className = "",
@@ -353,6 +378,8 @@ export function AdminSelect({
   name: string;
   label: string;
   defaultValue?: string;
+  value?: string;
+  onChange?: (value: string) => void;
   options: string[];
   formatLabel: (value: string) => string;
   className?: string;
@@ -364,7 +391,9 @@ export function AdminSelect({
       <select
         id={id}
         name={name}
-        defaultValue={defaultValue}
+        defaultValue={value === undefined ? defaultValue : undefined}
+        value={value}
+        onChange={onChange ? (event) => onChange(event.target.value) : undefined}
         className="admin-field"
         autoComplete="off"
       >
