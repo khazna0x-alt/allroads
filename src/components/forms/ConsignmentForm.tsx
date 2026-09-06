@@ -2,7 +2,7 @@
 
 import { useMutation } from "convex/react";
 import { useLocale, useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { FieldLabel } from "@/components/forms/FieldLabel";
 import { FileListField, type ListedFile } from "@/components/forms/FileListField";
 import { Link } from "@/i18n/navigation";
@@ -28,6 +28,12 @@ const BODY_TYPES = [
 const MAX_PHOTOS = 12;
 const MAX_DOCS = 8;
 
+function createCaptcha() {
+  const a = Math.floor(Math.random() * 6) + 2;
+  const b = Math.floor(Math.random() * 6) + 1;
+  return { a, b, sum: a + b };
+}
+
 export function ConsignmentForm() {
   const t = useTranslations("Consign");
   const nav = useTranslations("Nav");
@@ -40,13 +46,7 @@ export function ConsignmentForm() {
   const [busy, setBusy] = useState(false);
   const [photos, setPhotos] = useState<ListedFile[]>([]);
   const [docs, setDocs] = useState<ListedFile[]>([]);
-  const [captcha, setCaptcha] = useState<{ a: number; b: number; sum: number } | null>(null);
-
-  useEffect(() => {
-    const a = Math.floor(Math.random() * 6) + 2;
-    const b = Math.floor(Math.random() * 6) + 1;
-    setCaptcha({ a, b, sum: a + b });
-  }, []);
+  const [captcha] = useState(createCaptcha);
 
   async function uploadFile(file: File): Promise<Id<"_storage">> {
     const postUrl = await generateUploadUrl();

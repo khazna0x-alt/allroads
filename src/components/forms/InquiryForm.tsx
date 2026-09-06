@@ -2,13 +2,32 @@
 
 import { useMutation, useQuery } from "convex/react";
 import { useLocale, useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { FieldLabel } from "@/components/forms/FieldLabel";
 import { Link } from "@/i18n/navigation";
 import { inquirySubjects, type InquirySubjectValue } from "@/lib/brand";
 import { api, type Id } from "@/lib/convex";
 
 const PRESETS = ["available", "deposit", "book", "financing"] as const;
+
+function createCaptcha() {
+  const a = Math.floor(Math.random() * 6) + 2;
+  const b = Math.floor(Math.random() * 6) + 1;
+  return { a, b, sum: a + b };
+}
+
+function subscribeViewingHash(onStoreChange: () => void) {
+  window.addEventListener("hashchange", onStoreChange);
+  return () => window.removeEventListener("hashchange", onStoreChange);
+}
+
+function getViewingHash() {
+  return window.location.hash === "#viewing";
+}
+
+function getServerViewingHash() {
+  return false;
+}
 
 export function InquiryForm({
   vehicleId,
@@ -25,14 +44,16 @@ export function InquiryForm({
   const nav = useTranslations("Nav");
   const locale = useLocale();
   const createInquiry = useMutation(api.inquiries.createInquiry);
-  const [captcha, setCaptcha] = useState<{ a: number; b: number; sum: number } | null>(null);
+  const [captcha] = useState(createCaptcha);
   const [status, setStatus] = useState<"idle" | "ok" | "error">("idle");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [subjectKey, setSubjectKey] = useState<InquirySubjectValue>("general");
   const [listedVehicleId, setListedVehicleId] = useState("");
   const [otherDetails, setOtherDetails] = useState("");
-  const [viewing, setViewing] = useState(false);
+  const hashViewing = useSyncExternalStore(subscribeViewingHash, getViewingHash, getServerViewingHash);
+  const [viewingOverride, setViewingOverride] = useState<boolean | null>(null);
+  const viewing = viewingOverride ?? hashViewing;
   const [preferredContact, setPreferredContact] = useState<"phone" | "whatsapp" | "email">(
     "whatsapp",
   );
@@ -40,23 +61,6 @@ export function InquiryForm({
   const showCarPicker = !vehicleId && subjectKey === "displayed";
   const cars = useQuery(api.public.listPublishedChoices, showCarPicker ? {} : "skip");
   const attachedVehicleId = vehicleId ?? (listedVehicleId ? (listedVehicleId as Id<"vehicles">) : undefined);
-
-  useEffect(() => {
-    const a = Math.floor(Math.random() * 6) + 2;
-    const b = Math.floor(Math.random() * 6) + 1;
-    setCaptcha({ a, b, sum: a + b });
-  }, []);
-
-  useEffect(() => {
-    function syncHash() {
-      if (window.location.hash === "#viewing") {
-        setViewing(true);
-      }
-    }
-    syncHash();
-    window.addEventListener("hashchange", syncHash);
-    return () => window.removeEventListener("hashchange", syncHash);
-  }, []);
 
   function subjectLabel(value: InquirySubjectValue): string {
     const subject = inquirySubjects.find((item) => item.value === value);
@@ -266,7 +270,7 @@ export function InquiryForm({
           <input
             type="checkbox"
             checked={viewing}
-            onChange={(event) => setViewing(event.target.checked)}
+            onChange={(event) => setViewingOverride(event.target.checked)}
             className="mt-1"
           />
           <span>{t("viewingRequest")}</span>

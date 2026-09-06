@@ -22,21 +22,15 @@ export function VehicleQrCard({ vehicleId, stockCode }: { vehicleId: Id<"vehicle
   }, [vehicleId]);
 
   useEffect(() => {
-    if (!qr?.listed || qr.imageUrl || autoCreateTried.current || busy !== null) {
+    if (!qr?.listed || qr.imageUrl || autoCreateTried.current) {
       return;
     }
     autoCreateTried.current = true;
-    setBusy("refresh");
-    setError("");
-    void refresh({ vehicleId })
-      .catch((err) => {
-        setError(convexErrorMessage(err, t("failed")));
-        autoCreateTried.current = false;
-      })
-      .finally(() => {
-        setBusy(null);
-      });
-  }, [busy, qr, refresh, t, vehicleId]);
+    void refresh({ vehicleId }).catch((err: unknown) => {
+      autoCreateTried.current = false;
+      setError(convexErrorMessage(err, t("failed")));
+    });
+  }, [qr?.imageUrl, qr?.listed, refresh, t, vehicleId]);
 
   async function onRefresh() {
     setBusy("refresh");

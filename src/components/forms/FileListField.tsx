@@ -1,15 +1,26 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { FieldLabel } from "@/components/forms/FieldLabel";
 
 export type ListedFile = {
   id: string;
   file: File;
+  previewUrl?: string;
 };
 
 export function createListedFile(file: File): ListedFile {
-  return { id: crypto.randomUUID(), file };
+  return {
+    id: crypto.randomUUID(),
+    file,
+    previewUrl: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined,
+  };
+}
+
+function revokePreview(item: ListedFile) {
+  if (item.previewUrl) {
+    URL.revokeObjectURL(item.previewUrl);
+  }
 }
 
 export function FileListField({
@@ -36,23 +47,20 @@ export function FileListField({
   const addInput = useRef<HTMLInputElement>(null);
   const replaceInput = useRef<HTMLInputElement>(null);
   const replaceId = useRef<string | null>(null);
-  const [previews, setPreviews] = useState<Record<string, string>>({});
+  const filesRef = useRef(files);
   const remaining = Math.max(0, maxCount - files.length);
 
   useEffect(() => {
-    const next: Record<string, string> = {};
-    for (const item of files) {
-      if (item.file.type.startsWith("image/")) {
-        next[item.id] = URL.createObjectURL(item.file);
-      }
-    }
-    setPreviews(next);
+    filesRef.current = files;
+  }, [files]);
+
+  useEffect(() => {
     return () => {
-      for (const url of Object.values(next)) {
-        URL.revokeObjectURL(url);
+      for (const item of filesRef.current) {
+        revokePreview(item);
       }
     };
-  }, [files]);
+  }, []);
 
   function addFiles(list: FileList | null) {
     const incoming = Array.from(list ?? []);
@@ -69,7 +77,23 @@ export function FileListField({
     if (!nextFile || !id) {
       return;
     }
-    onChange(files.map((item) => (item.id === id ? { id: item.id, file: nextFile } : item)));
+    onChange(
+      files.map((item) => {
+        if (item.id !== id) {
+          return item;
+        }
+        revokePreview(item);
+        return { id: item.id, file: nextFile, previewUrl: nextFile.type.startsWith("image/") ? URL.createObjectURL(nextFile) : undefined };
+      }),
+    );
+  }
+
+  function removeFile(id: string) {
+    const removed = files.find((item) => item.id === id);
+    if (removed) {
+      revokePreview(removed);
+    }
+    onChange(files.filter((row) => row.id !== id));
   }
 
   return (
@@ -104,7 +128,7 @@ export function FileListField({
       {files.length > 0 ? (
         <ul className="mt-3 grid grid-cols-2 gap-3">
           {files.map((item) => {
-            const preview = previews[item.id];
+            const preview = item.previewUrl;
             return (
               <li key={item.id} className="flex min-w-0 flex-col border border-[var(--line)] bg-[var(--ink)] p-2">
                 <div className="flex aspect-square items-center justify-center overflow-hidden bg-[var(--ink-soft)]">
@@ -139,7 +163,7 @@ export function FileListField({
                   <button
                     type="button"
                     className="min-h-11 border border-[var(--line)] px-2 text-xs text-[var(--ivory)] hover:border-[var(--crimson)] hover:text-[var(--crimson)]"
-                    onClick={() => onChange(files.filter((row) => row.id !== item.id))}
+                    onClick={() => removeFile(item.id)}
                   >
                     {removeLabel}
                   </button>

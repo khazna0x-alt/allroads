@@ -1,7 +1,7 @@
 import { ConvexError } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { deleteVehicleRelatedRows, latestInspection, logAudit, logVehicleStatusChange, requireStatusReason } from "./audit";
+import { deleteVehicleRelatedRows, logAudit, logVehicleStatusChange, requireStatusReason } from "./audit";
 import { depositOmrForPrice, isBookableStatus } from "./bookings";
 import { canBookPricedVehicle, comparableBuyPrice, resolvePriceMode } from "./pricing";
 import { canPublish, isOnPublicFloor, isPublicHidden, publicFloorStatus } from "./publish";
@@ -218,8 +218,7 @@ export async function staffContractForVehicle(
 export async function toStaffVehicleRecord(ctx: QueryCtx, vehicle: Doc<"vehicles">) {
   const photos = await staffPhotosForVehicle(ctx, vehicle._id);
   const contract = await staffContractForVehicle(ctx, vehicle);
-  const inspection = await latestInspection(ctx, vehicle._id);
-  return toStaffVehicle(vehicle, photos, contract, inspection);
+  return toStaffVehicle(vehicle, photos, contract);
 }
 
 export function toPublicVehicle(
@@ -280,7 +279,6 @@ export function toStaffVehicle(
   vehicle: Doc<"vehicles">,
   photos: StaffVehiclePhoto[],
   contract: StaffVehicleContract,
-  inspection: Doc<"inspections"> | null,
 ) {
   const publish = canPublish(vehicle, photos.length);
   return {
