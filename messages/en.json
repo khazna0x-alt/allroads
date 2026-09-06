@@ -1121,15 +1121,15 @@
         },
         "inquiries": {
           "title": "Inquiries",
-          "lead": "Website, WhatsApp, and assistant handoffs land here.",
-          "step1Title": "Read the reason",
-          "step1Body": "Bot handoffs include why the customer needs a person.",
+          "lead": "Website, WhatsApp, and assistant handoffs land here. Every inquiry is also added as a task in Wa-Agents.",
+          "step1Title": "A task is created in Wa-Agents",
+          "step1Body": "Each new inquiry — website form, WhatsApp, or assistant handoff — creates a Wa-Agents task with the name, phone, and message. Open Tasks in Wa-Agents to work it.",
           "step2Title": "Call or WhatsApp",
           "step2Body": "Use the phone on the card. Mark the inquiry in progress when you start.",
           "step3Title": "Link the car if needed",
           "step3Body": "Stock codes appear when the customer asked about a listed car.",
           "step4Title": "Close when done",
-          "step4Body": "Sold, booked, or closed — do not leave names sitting in New."
+          "step4Body": "Sold, booked, or closed — do not leave names sitting in New. Complete the matching Wa-Agents task when the follow-up is finished."
         },
         "bookings": {
           "title": "Bookings",
