@@ -3,7 +3,9 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { deleteVehicleRelatedRows, latestInspection, logAudit, logVehicleStatusChange, requireStatusReason } from "./audit";
 import { depositOmrForPrice, isBookableStatus } from "./bookings";
-import { canPublish, isPublicHidden, publicFloorStatus } from "./publish";
+import { canBookPricedVehicle, comparableBuyPrice, resolvePriceMode } from "./pricing";
+import { canPublish, isOnPublicFloor, isPublicHidden, publicFloorStatus } from "./publish";
+import { scheduleQrDelete, scheduleQrSync } from "./qrSync";
 import { buildSearchText, slugify } from "./identifiers";
 import { resolveArabicDescription, resolveArabicTitle } from "./vehicleCopy";
 import {
@@ -20,6 +22,8 @@ export type VehicleWrite = {
   year: number;
   trim?: string;
   priceOmr: number;
+  priceMode?: "buy" | "request" | "finance";
+  financeMonthlyOmr?: number;
   mileageKm: number;
   fuel: Doc<"vehicles">["fuel"];
   transmission: Doc<"vehicles">["transmission"];
@@ -187,6 +191,17 @@ export async function staffPhotosForVehicle(
   return photoRows;
 }
 
+export async function vehicleHasPhotos(
+  ctx: QueryCtx | MutationCtx,
+  vehicleId: Id<"vehicles">,
+): Promise<boolean> {
+  const photo = await ctx.db
+    .query("vehiclePhotos")
+    .withIndex("by_vehicle", (q) => q.eq("vehicleId", vehicleId))
+    .first();
+  return photo !== null;
+}
+
 export async function staffContractForVehicle(
   ctx: QueryCtx,
   vehicle: Doc<"vehicles">,
@@ -224,6 +239,8 @@ export function toPublicVehicle(
     year: vehicle.year,
     trim: vehicle.trim,
     priceOmr: vehicle.priceOmr,
+    priceMode: resolvePriceMode(vehicle.priceMode),
+    financeMonthlyOmr: vehicle.financeMonthlyOmr,
     mileageKm: vehicle.mileageKm,
     fuel: vehicle.fuel,
     transmission: vehicle.transmission,
@@ -243,8 +260,8 @@ export function toPublicVehicle(
     featured: vehicle.featured,
     status: publicFloorStatus(vehicle) ?? "published",
     updatedAt: vehicle.updatedAt,
-    depositOmr: depositOmrForPrice(vehicle.priceOmr),
-    canBook: isBookableStatus(vehicle.status),
+    depositOmr: canBookPricedVehicle(vehicle) ? depositOmrForPrice(vehicle.priceOmr) : 0,
+    canBook: isBookableStatus(vehicle.status) && canBookPricedVehicle(vehicle),
     ...(extras?.inspectedAt !== undefined ? { inspectedAt: extras.inspectedAt } : {}),
     photos: photos.map((photo) => ({
       ...photo,
@@ -265,7 +282,7 @@ export function toStaffVehicle(
   contract: StaffVehicleContract,
   inspection: Doc<"inspections"> | null,
 ) {
-  const publish = canPublish(vehicle, inspection);
+  const publish = canPublish(vehicle, photos.length);
   return {
     _id: vehicle._id,
     _creationTime: vehicle._creationTime,
@@ -277,6 +294,8 @@ export function toStaffVehicle(
     year: vehicle.year,
     trim: vehicle.trim,
     priceOmr: vehicle.priceOmr,
+    priceMode: resolvePriceMode(vehicle.priceMode),
+    financeMonthlyOmr: vehicle.financeMonthlyOmr,
     mileageKm: vehicle.mileageKm,
     fuel: vehicle.fuel,
     transmission: vehicle.transmission,
@@ -371,11 +390,17 @@ export function matchesPublicFilters(
   if (filters.status && publicFloorStatus(vehicle) !== filters.status) {
     return false;
   }
-  if (filters.minPrice !== undefined && vehicle.priceOmr < filters.minPrice) {
-    return false;
-  }
-  if (filters.maxPrice !== undefined && vehicle.priceOmr > filters.maxPrice) {
-    return false;
+  if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
+    const buyPrice = comparableBuyPrice(vehicle);
+    if (buyPrice === null) {
+      return false;
+    }
+    if (filters.minPrice !== undefined && buyPrice < filters.minPrice) {
+      return false;
+    }
+    if (filters.maxPrice !== undefined && buyPrice > filters.maxPrice) {
+      return false;
+    }
   }
   if (filters.minYear !== undefined && vehicle.year < filters.minYear) {
     return false;
@@ -444,8 +469,8 @@ export async function applyVehicleStatus(
     (args.status === "published" || args.status === "approved_for_publishing") &&
     !releasingHold
   ) {
-    const inspection = await latestInspection(ctx, vehicle._id);
-    const gate = canPublish(vehicle, inspection, Date.now());
+    const hasPhotos = await vehicleHasPhotos(ctx, vehicle._id);
+    const gate = canPublish(vehicle, hasPhotos ? 1 : 0);
     const alreadyPublished = fromStatus === "published" && args.status === "published";
     if (!gate.ok && !alreadyPublished) {
       await logAudit(ctx, {
@@ -457,13 +482,6 @@ export async function applyVehicleStatus(
         notes: gate.reasons.join(","),
       });
       throw new ConvexError(`Cannot publish: ${gate.reasons.join(", ")}`);
-    }
-    if (
-      args.status === "published" &&
-      vehicle.onSiteConfirmed !== true &&
-      !gate.grandfathered
-    ) {
-      throw new ConvexError("Cannot publish: not_on_site");
     }
   }
 
@@ -490,6 +508,7 @@ export async function applyVehicleStatus(
       notes: args.notes ?? args.staffNotes,
     });
   }
+  await scheduleQrSync(ctx, args.vehicleId);
   return true;
 }
 
@@ -509,6 +528,13 @@ export async function applyPublicHidden(
   if (wasHidden === args.publicHidden) {
     return true;
   }
+  if (!args.publicHidden && isOnPublicFloor({ ...vehicle, publicHidden: false })) {
+    const hasPhotos = await vehicleHasPhotos(ctx, args.vehicleId);
+    const gate = canPublish({ ...vehicle, publicHidden: false }, hasPhotos ? 1 : 0);
+    if (!gate.ok) {
+      throw new ConvexError(`Cannot publish: ${gate.reasons.join(", ")}`);
+    }
+  }
   await ctx.db.patch("vehicles", args.vehicleId, {
     publicHidden: args.publicHidden,
     updatedAt: Date.now(),
@@ -520,6 +546,7 @@ export async function applyPublicHidden(
     fromValue: wasHidden ? "true" : "false",
     toValue: args.publicHidden ? "true" : "false",
   });
+  await scheduleQrSync(ctx, args.vehicleId);
   return true;
 }
 
@@ -543,6 +570,10 @@ export async function deleteVehicleWithAssets(
   if (vehicle.contractStorageId) {
     await ctx.storage.delete(vehicle.contractStorageId);
   }
+  await scheduleQrDelete(ctx, {
+    elkqrId: vehicle.elkqrId,
+    storageId: vehicle.elkqrImageStorageId,
+  });
   await deleteVehicleRelatedRows(ctx, vehicleId);
   await ctx.db.delete("vehicles", vehicleId);
   return true;

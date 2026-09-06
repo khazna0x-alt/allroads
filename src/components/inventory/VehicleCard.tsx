@@ -6,7 +6,8 @@ import { Link } from "@/i18n/navigation";
 import { WhatsAppButton } from "@/components/brand/WhatsAppButton";
 import { PhotoCarousel } from "@/components/inventory/PhotoCarousel";
 import { api, type Id } from "@/lib/convex";
-import { formatKm, formatOmr } from "@/lib/format";
+import { formatKm } from "@/lib/format";
+import { formatVehiclePrice } from "@/lib/pricing";
 import { vehiclePublicUrl, whatsappHref } from "@/lib/listing";
 import { arabicMake } from "@/lib/vehicleCopy";
 
@@ -20,6 +21,8 @@ export type PublicVehicleCard = {
   titleAr: string;
   titleEn: string;
   priceOmr: number;
+  priceMode?: "buy" | "request" | "finance";
+  financeMonthlyOmr?: number;
   mileageKm: number;
   spec: "gcc" | "american" | "other";
   bodyType:
@@ -57,13 +60,14 @@ export function VehicleCard({ vehicle }: { vehicle: PublicVehicleCard }) {
     url: photo.url,
     alt: locale === "ar" ? photo.altAr : photo.altEn,
   }));
+  const priceLabel = formatVehiclePrice(vehicle, locale, t);
   const listingUrl = vehiclePublicUrl(vehicle.slug, locale);
   const whatsapp = whatsappHref(
     t("whatsappMessage", {
       title,
       year: vehicle.year,
       stock: vehicle.stockCode,
-      price: formatOmr(vehicle.priceOmr, locale),
+      price: priceLabel,
       url: listingUrl,
     }),
   );
@@ -104,7 +108,7 @@ export function VehicleCard({ vehicle }: { vehicle: PublicVehicleCard }) {
           {t(`bodyTypes.${vehicle.bodyType}`)}
         </p>
         <div className="mt-2 flex flex-wrap items-end justify-between gap-2">
-          <p className="text-[var(--sand-bright)]">{formatOmr(vehicle.priceOmr, locale)}</p>
+          <p className="text-[var(--sand-bright)]">{priceLabel}</p>
           <p className="text-sm text-[var(--ivory-dim)]">{formatKm(vehicle.mileageKm, locale)}</p>
         </div>
         <div className="mt-auto grid grid-cols-2 items-stretch gap-2 pt-4">

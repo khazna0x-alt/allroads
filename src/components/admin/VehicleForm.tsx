@@ -40,6 +40,8 @@ type VehicleValues = {
   year: number;
   trim?: string;
   priceOmr: number;
+  priceMode?: "buy" | "request" | "finance";
+  financeMonthlyOmr?: number;
   mileageKm: number;
   fuel: VehicleDraft["fuel"];
   transmission: VehicleDraft["transmission"];
@@ -103,6 +105,8 @@ function draftFromInitial(initial?: VehicleValues): VehicleDraft {
     year: initial.year,
     trim: initial.trim ?? "",
     priceOmr: initial.priceOmr,
+    priceMode: initial.priceMode ?? "buy",
+    financeMonthlyOmr: initial.financeMonthlyOmr ?? 0,
     mileageKm: initial.mileageKm,
     fuel: initial.fuel,
     transmission: initial.transmission,
@@ -138,6 +142,8 @@ function writePayload(draft: VehicleDraft) {
     year: draft.year,
     trim: draft.trim.trim() || undefined,
     priceOmr: draft.priceOmr,
+    priceMode: draft.priceMode,
+    financeMonthlyOmr: draft.priceMode === "finance" ? draft.financeMonthlyOmr : undefined,
     mileageKm: draft.mileageKm,
     fuel: draft.fuel,
     transmission: draft.transmission,
@@ -345,7 +351,7 @@ export function VehicleForm({
           {vehicleId ? (
             <div className="space-y-6">
               <DeskCard>
-                <h2 className="font-display text-xl">{t("consignments.approveForPublish")}</h2>
+                <h2 className="font-display text-xl">{t("inventory.publish")}</h2>
                 <div className="mt-4">
                   <OwnerDeskActions
                     vehicle={{
@@ -353,9 +359,6 @@ export function VehicleForm({
                       status: initial?.status ?? "approved",
                       publishReady: initial?.publishReady ?? false,
                       publishBlockers: initial?.publishBlockers ?? [],
-                      publishGrandfathered: initial?.publishGrandfathered,
-                      onSiteConfirmed: draft.onSiteConfirmed,
-                      contractEndsAt: initial?.contractEndsAt,
                       staffNotes: draft.staffNotes,
                     }}
                     showNotes={false}
@@ -545,15 +548,39 @@ function SpecsFields({
   const t = useTranslations("Admin");
   return (
     <>
-      <AdminField
-        name="priceOmr"
-        label={t("fields.priceOmr")}
-        type="number"
-        inputMode="numeric"
-        value={String(draft.priceOmr || "")}
-        onChange={(value) => patch("priceOmr", Number(value) || 0)}
-        required
+      <AdminSelect
+        name="priceMode"
+        label={t("fields.priceMode")}
+        value={draft.priceMode}
+        onChange={(value) => patch("priceMode", value as VehicleDraft["priceMode"])}
+        options={["buy", "request", "finance"]}
+        formatLabel={(value) => t(`priceModes.${value}`)}
       />
+      {draft.priceMode === "buy" ? (
+        <AdminField
+          name="priceOmr"
+          label={t("fields.priceOmr")}
+          type="number"
+          inputMode="numeric"
+          value={String(draft.priceOmr || "")}
+          onChange={(value) => patch("priceOmr", Number(value) || 0)}
+          required
+        />
+      ) : null}
+      {draft.priceMode === "finance" ? (
+        <AdminField
+          name="financeMonthlyOmr"
+          label={t("fields.financeMonthlyOmr")}
+          type="number"
+          inputMode="numeric"
+          value={String(draft.financeMonthlyOmr || "")}
+          onChange={(value) => patch("financeMonthlyOmr", Number(value) || 0)}
+          required
+        />
+      ) : null}
+      {draft.priceMode === "request" ? (
+        <p className="text-sm text-[var(--ivory-dim)]">{t("fields.priceModeRequestHint")}</p>
+      ) : null}
       <AdminField
         name="mileageKm"
         label={t("fields.mileageKm")}

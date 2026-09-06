@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, usePaginatedQuery } from "convex/react";
+import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -12,7 +12,6 @@ import {
   AdminCheckbox,
   EmptyState,
   FilterChip,
-  formatOmr,
   GoldRule,
   PageHeader,
   parseStaffInventoryStatus,
@@ -23,6 +22,7 @@ import {
 } from "@/components/admin/ui";
 import { api, type Id } from "@/lib/convex";
 import { displayVehicleTitle } from "@/lib/format";
+import { formatStaffVehiclePrice } from "@/lib/pricing";
 
 export default function AdminInventoryPage() {
   return (
@@ -52,6 +52,8 @@ function InventoryDesk() {
   const setStatusMany = useMutation(api.vehicles.setStatusMany);
   const setPublicHiddenMany = useMutation(api.vehicles.setPublicHiddenMany);
   const removeMany = useMutation(api.vehicles.removeMany);
+  const me = useQuery(api.staff.me);
+  const isAdmin = me?.role === "admin";
   const [selected, setSelected] = useState<Set<Id<"vehicles">>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
   const [selectionStatus, setSelectionStatus] = useState(status);
@@ -253,20 +255,16 @@ function InventoryDesk() {
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <StatusBadge value={vehicle.status} />
               <p className="text-sm tabular-nums text-[var(--ivory-dim)]">
-                {formatOmr(vehicle.priceOmr, locale)} {t("omr")}
+                {formatStaffVehiclePrice(vehicle, locale, t)}
               </p>
             </div>
             <div className="mt-4">
               <VehicleActions
                 vehicleId={vehicle._id}
-                status={vehicle.status}
                 onFloor={vehicle.status === "published" || vehicle.status === "reserved" || vehicle.status === "booked"}
                 publicHidden={vehicle.publicHidden}
                 publishReady={vehicle.publishReady}
                 publishBlockers={vehicle.publishBlockers}
-                publishGrandfathered={vehicle.publishGrandfathered}
-                contractEndsAt={vehicle.contractEndsAt}
-                onSiteConfirmed={vehicle.onSiteConfirmed}
                 statusFilter={status}
               />
             </div>
@@ -317,19 +315,15 @@ function InventoryDesk() {
                   <StatusBadge value={vehicle.status} />
                 </td>
                 <td className="tabular-nums">
-                  {formatOmr(vehicle.priceOmr, locale)} {t("omr")}
+                  {formatStaffVehiclePrice(vehicle, locale, t)}
                 </td>
                 <td>
                   <VehicleActions
                     vehicleId={vehicle._id}
-                    status={vehicle.status}
                     onFloor={vehicle.status === "published" || vehicle.status === "reserved" || vehicle.status === "booked"}
                     publicHidden={vehicle.publicHidden}
                     publishReady={vehicle.publishReady}
                     publishBlockers={vehicle.publishBlockers}
-                    publishGrandfathered={vehicle.publishGrandfathered}
-                    contractEndsAt={vehicle.contractEndsAt}
-                    onSiteConfirmed={vehicle.onSiteConfirmed}
                     statusFilter={status}
                   />
                 </td>
@@ -372,9 +366,11 @@ function InventoryDesk() {
               <AdminButton variant="danger" onClick={bulkSold} disabled={bulkBusy}>
                 {t("inventory.sold")}
               </AdminButton>
-              <AdminButton variant="danger" onClick={bulkDelete} disabled={bulkBusy}>
-                {t("inventory.delete")}
-              </AdminButton>
+              {isAdmin ? (
+                <AdminButton variant="danger" onClick={bulkDelete} disabled={bulkBusy}>
+                  {t("inventory.delete")}
+                </AdminButton>
+              ) : null}
               <AdminButton variant="ghost" onClick={() => setSelected(new Set())} disabled={bulkBusy}>
                 {t("inventory.clearSelection")}
               </AdminButton>
@@ -388,25 +384,17 @@ function InventoryDesk() {
 
 function VehicleActions({
   vehicleId,
-  status,
   onFloor,
   publicHidden,
   publishReady,
   publishBlockers,
-  publishGrandfathered,
-  contractEndsAt,
-  onSiteConfirmed,
   statusFilter,
 }: {
   vehicleId: Id<"vehicles">;
-  status: string;
   onFloor: boolean;
   publicHidden: boolean;
   publishReady: boolean;
   publishBlockers: string[];
-  publishGrandfathered: boolean;
-  contractEndsAt?: number;
-  onSiteConfirmed: boolean;
   statusFilter: string;
 }) {
   const t = useTranslations("Admin");
@@ -415,8 +403,6 @@ function VehicleActions({
   const lock = clientPublishLock({
     publishReady,
     publishBlockers,
-    contractEndsAt,
-    publishGrandfathered,
   });
   const lockTitle = lock.ready
     ? undefined
@@ -435,21 +421,13 @@ function VehicleActions({
         <AdminButton onClick={() => void setPublicHidden({ vehicleId, publicHidden: false })}>
           {t("inventory.unhide")}
         </AdminButton>
-      ) : status === "approved_for_publishing" ? (
-        <AdminButton
-          disabled={!lock.ready || !onSiteConfirmed}
-          title={!onSiteConfirmed ? t("publishBlockers.not_on_site") : lockTitle}
-          onClick={() => void setVehicleStatus({ vehicleId, status: "published" })}
-        >
-          {t("inventory.publish")}
-        </AdminButton>
       ) : (
         <AdminButton
           disabled={!lock.ready}
           title={lockTitle}
-          onClick={() => void setVehicleStatus({ vehicleId, status: "approved_for_publishing" })}
+          onClick={() => void setVehicleStatus({ vehicleId, status: "published" })}
         >
-          {t("inventory.approveForPublish")}
+          {t("inventory.publish")}
         </AdminButton>
       )}
     </div>

@@ -2,10 +2,13 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { internalAction, internalMutation } from "./_generated/server";
 import { logAudit } from "./lib/audit";
+import { internationalOmaniPhone } from "./lib/identifiers";
+import { sendStaffEmail, staffEmailLines } from "./lib/staffEmail";
 
 async function postWebhook(
   url: string | undefined,
   payload: Record<string, string | number | boolean | null>,
+  extraHeaders?: Record<string, string>,
 ): Promise<void> {
   if (!url) {
     return;
@@ -13,14 +16,108 @@ async function postWebhook(
   try {
     const response = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...extraHeaders,
+      },
       body: JSON.stringify(payload),
     });
     if (!response.ok) {
-      console.error("Notify webhook failed", response.status);
+      const detail = await response.text();
+      console.error("Notify webhook failed", response.status, detail);
     }
   } catch (error) {
     console.error("Notify webhook error", error);
+  }
+}
+
+function dmchampHeaders(url: string): Record<string, string> | undefined {
+  if (!url.includes("dmchamp.com")) {
+    return undefined;
+  }
+  const secret = process.env.DMCHAMP_WEBHOOK_SECRET?.trim();
+  if (!secret) {
+    return undefined;
+  }
+  return { "X-Webhook-Secret": secret };
+}
+
+function inquiryTaskPayload(args: {
+  inquiryId: string;
+  vehicleId?: string;
+  stockCode?: string;
+  name: string;
+  phone: string;
+  email?: string;
+  subject: string;
+  message?: string;
+  viewingRequested: boolean;
+  source?: string;
+  handoffReason?: string;
+}): Record<string, string> {
+  const isHandoff = Boolean(args.handoffReason);
+  const event = isHandoff ? "bot_handoff" : "inquiry_submitted";
+  const kind = isHandoff ? "Bot handoff" : "Website inquiry";
+  const phone = internationalOmaniPhone(args.phone);
+  const title = args.stockCode
+    ? `${kind} · ${args.name} · ${args.stockCode}`
+    : `${kind} · ${args.name}`;
+  const description = staffEmailLines([
+    ["Name", args.name],
+    ["Phone", phone],
+    ["Email", args.email ?? "not provided"],
+    ["Subject", args.subject],
+    ["Stock", args.stockCode],
+    ["Source", args.source],
+    ["Viewing requested", args.viewingRequested ? "yes" : "no"],
+    ["Handoff", args.handoffReason],
+    ["Inquiry ID", args.inquiryId],
+  ]);
+  const messageBlock = args.message?.trim()
+    ? `${description}\n\nMessage:\n${args.message.trim()}`
+    : description;
+
+  return {
+    event,
+    title,
+    description: messageBlock,
+    name: args.name,
+    phone,
+    email: args.email ?? "",
+    subject: args.subject,
+    message: args.message ?? "",
+    stockCode: args.stockCode ?? "",
+    inquiryId: args.inquiryId,
+    vehicleId: args.vehicleId ?? "",
+    source: args.source ?? "",
+    viewingRequested: args.viewingRequested ? "yes" : "no",
+    handoffReason: args.handoffReason ?? "",
+  };
+}
+
+async function postInquiryWebhooks(
+  payload: Record<string, string>,
+): Promise<void> {
+  const dmchampUrl = process.env.DMCHAMP_WEBHOOK_URL?.trim();
+  const staffUrl = process.env.STAFF_NOTIFY_WEBHOOK_URL?.trim();
+  const target = dmchampUrl || staffUrl;
+  if (!target) {
+    console.log(
+      "[DMCHAMP] Inquiry webhook skipped: DMCHAMP_WEBHOOK_URL is not set",
+    );
+    return;
+  }
+  if (
+    target.includes("dmchamp.com") &&
+    !process.env.DMCHAMP_WEBHOOK_SECRET?.trim()
+  ) {
+    console.log(
+      "[DMCHAMP] Add DMCHAMP_WEBHOOK_SECRET from the automation Webhook trigger",
+    );
+  }
+  await postWebhook(target, payload, dmchampHeaders(target));
+  if (dmchampUrl && staffUrl && staffUrl !== dmchampUrl) {
+    await postWebhook(staffUrl, payload, dmchampHeaders(staffUrl));
   }
 }
 
@@ -102,6 +199,20 @@ export const notifyConsignment = internalAction({
       summary,
     });
 
+    await sendStaffEmail({
+      subject: `List your car · ${args.stockCode}`,
+      text: [
+        "A new car listing request arrived.",
+        "",
+        staffEmailLines([
+          ["Stock", args.stockCode],
+          ["Owner", args.ownerName],
+          ["Phone", args.ownerPhone],
+          ["Car", summary],
+        ]),
+      ].join("\n"),
+    });
+
     await ctx.runMutation(internal.notifications.recordConsignmentNotice, {
       vehicleId: args.vehicleId,
       stockCode: args.stockCode,
@@ -121,6 +232,7 @@ export const notifyInquiry = internalAction({
     phone: v.string(),
     email: v.optional(v.string()),
     subject: v.string(),
+    message: v.optional(v.string()),
     viewingRequested: v.boolean(),
     source: v.optional(v.string()),
     handoffReason: v.optional(v.string()),
@@ -135,18 +247,41 @@ export const notifyInquiry = internalAction({
       `[STAFF NOTIFY] ${isHandoff ? "Bot handoff" : "New inquiry"} from ${args.name} (${args.phone}): ${summary}`,
     );
 
-    await postWebhook(process.env.STAFF_NOTIFY_WEBHOOK_URL, {
-      event: isHandoff ? "bot_handoff" : "inquiry_submitted",
-      inquiryId: args.inquiryId,
-      vehicleId: args.vehicleId ?? null,
-      stockCode: args.stockCode ?? null,
-      name: args.name,
-      phone: args.phone,
-      email: args.email ?? null,
-      subject: args.subject,
-      viewingRequested: args.viewingRequested,
-      source: args.source ?? null,
-      handoffReason: args.handoffReason ?? null,
+    await postInquiryWebhooks(
+      inquiryTaskPayload({
+        inquiryId: args.inquiryId,
+        vehicleId: args.vehicleId,
+        stockCode: args.stockCode,
+        name: args.name,
+        phone: args.phone,
+        email: args.email,
+        subject: args.subject,
+        message: args.message,
+        viewingRequested: args.viewingRequested,
+        source: args.source,
+        handoffReason: args.handoffReason,
+      }),
+    );
+
+    const inquiryKind = isHandoff ? "Bot handoff" : "New inquiry";
+    await sendStaffEmail({
+      subject: `${inquiryKind} · ${summary}`,
+      replyTo: args.email,
+      text: [
+        `${inquiryKind} from ${args.name}.`,
+        "",
+        staffEmailLines([
+          ["Name", args.name],
+          ["Phone", args.phone],
+          ["Email", args.email ?? "not provided"],
+          ["Subject", args.subject],
+          ["Stock", args.stockCode],
+          ["Source", args.source],
+          ["Viewing requested", args.viewingRequested ? "yes" : "no"],
+          ["Handoff", args.handoffReason],
+        ]),
+        ...(args.message ? ["", "Message:", args.message] : []),
+      ].join("\n"),
     });
 
     if (args.email) {
@@ -215,6 +350,23 @@ export const notifyBooking = internalAction({
       });
     }
 
+    await sendStaffEmail({
+      subject: `${args.event} · ${args.bookingNumber}`,
+      replyTo: args.customerEmail,
+      text: [
+        `Booking ${args.event.replace(/_/g, " ")}.`,
+        "",
+        staffEmailLines([
+          ["Booking", args.bookingNumber],
+          ["Stock", args.stockCode],
+          ["Customer", args.customerName],
+          ["Phone", args.customerPhone],
+          ["Email", args.customerEmail ?? "not provided"],
+          ["Deposit OMR", args.depositOmr],
+        ]),
+      ].join("\n"),
+    });
+
     await ctx.runMutation(internal.notifications.recordBookingNotice, {
       vehicleId: args.vehicleId,
       bookingNumber: args.bookingNumber,
@@ -243,6 +395,18 @@ export const notifyContractExpiry = internalAction({
       stockCode: args.stockCode,
       vehicleId: args.vehicleId,
       endsAt: args.endsAt,
+    });
+
+    await sendStaffEmail({
+      subject: `${event} · ${args.stockCode}`,
+      text: [
+        `Contract ${args.kind} for ${args.stockCode}.`,
+        "",
+        staffEmailLines([
+          ["Stock", args.stockCode],
+          ["Ends", new Date(args.endsAt).toISOString()],
+        ]),
+      ].join("\n"),
     });
     return null;
   },
@@ -273,6 +437,21 @@ export const notifyHefflSyncFailed = internalAction({
       subject,
       stockCode: inquiry?.stockCode ?? null,
       reason: args.reason,
+    });
+
+    await sendStaffEmail({
+      subject: `Heffl sync failed · ${name}`,
+      text: [
+        "Heffl did not receive this inquiry.",
+        "",
+        staffEmailLines([
+          ["Name", name],
+          ["Phone", phone],
+          ["Subject", subject],
+          ["Stock", inquiry?.stockCode],
+          ["Reason", args.reason],
+        ]),
+      ].join("\n"),
     });
     return null;
   },

@@ -1,8 +1,9 @@
 import { fetchQuery } from "convex/nextjs";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { notFound } from "next/navigation";
 import { VehicleDetail } from "@/components/inventory/VehicleDetail";
 import { api } from "@/lib/convex";
-import { formatOmr } from "@/lib/format";
+import { formatVehiclePrice } from "@/lib/pricing";
 import { jsonLdScript, vehicleJsonLd } from "@/lib/vehicleJsonLd";
 
 export async function generateMetadata({
@@ -20,13 +21,14 @@ export async function generateMetadata({
     };
   }
   const title = locale === "ar" ? vehicle.titleAr : vehicle.titleEn;
+  const price = formatVehiclePrice(vehicle, locale, t);
   const description = (
     (locale === "ar" ? vehicle.descriptionAr : vehicle.descriptionEn).trim() ||
     t("metaDescription", {
       year: vehicle.year,
       make: vehicle.make,
       model: vehicle.model,
-      price: formatOmr(vehicle.priceOmr, locale),
+      price,
       stock: vehicle.stockCode,
     })
   ).slice(0, 180);
@@ -59,15 +61,16 @@ export default async function VehicleDetailPage({
   const { locale, slug } = await params;
   setRequestLocale(locale);
   const vehicle = await fetchQuery(api.public.getPublishedBySlug, { slug });
+  if (!vehicle) {
+    notFound();
+  }
 
   return (
     <>
-      {vehicle ? (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: jsonLdScript(vehicleJsonLd(vehicle, locale)) }}
-        />
-      ) : null}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(vehicleJsonLd(vehicle, locale)) }}
+      />
       <VehicleDetail slug={slug} />
     </>
   );

@@ -2,6 +2,7 @@
 
 import { useAction, useMutation, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
+import { notFound } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import {
   AdminButton,
@@ -21,7 +22,7 @@ type Credentials = { identifier: string; password: string };
 export default function StaffPage() {
   const t = useTranslations("Admin");
   const me = useQuery(api.staff.me);
-  const staff = useQuery(api.staff.list);
+  const staff = useQuery(api.staff.list, me?.role === "admin" ? {} : "skip");
   const createStaff = useAction(api.staff.createStaff);
   const changePassword = useAction(api.staff.changePassword);
   const [created, setCreated] = useState<Credentials | null>(null);
@@ -30,7 +31,7 @@ export default function StaffPage() {
   const [newPassword, setNewPassword] = useState("");
 
   if (me && me.role !== "admin") {
-    return <p className="text-[var(--ivory-dim)]">{t("staffPage.adminRequired")}</p>;
+    notFound();
   }
 
   return (

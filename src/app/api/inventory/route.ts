@@ -27,6 +27,8 @@ export async function GET() {
         year: vehicle.year,
         trim: vehicle.trim ?? null,
         priceOmr: vehicle.priceOmr,
+        priceMode: vehicle.priceMode,
+        financeMonthlyOmr: vehicle.financeMonthlyOmr ?? null,
         mileageKm: vehicle.mileageKm,
         fuel: vehicle.fuel,
         transmission: vehicle.transmission,

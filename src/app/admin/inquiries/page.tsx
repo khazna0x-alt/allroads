@@ -70,7 +70,7 @@ export default function InquiriesPage() {
     <div>
       <PageHeader kicker={t("inquiries.kicker")} title={t("inquiries.title")} lead={t("inquiries.lead")} />
       <GoldRule />
-      <p className="mt-6 max-w-3xl border border-[var(--line)] px-4 py-3 text-sm text-[var(--ivory-dim)] text-pretty">
+      <p className="mt-6 max-w-3xl whitespace-pre-line border border-[var(--line)] px-4 py-3 text-sm text-[var(--ivory-dim)] text-pretty">
         {t("inquiries.botNote")}
       </p>
       <div className="mt-8 space-y-4">

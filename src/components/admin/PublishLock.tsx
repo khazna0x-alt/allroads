@@ -2,17 +2,7 @@
 
 import { useTranslations } from "next-intl";
 
-const BLOCKERS = [
-  "public_hidden",
-  "not_on_site",
-  "price_required",
-  "vin_required",
-  "contract_expired",
-  "contract_not_signed",
-  "contract_file_missing",
-  "inspection_not_accepted",
-  "chassis_mismatch",
-] as const;
+const BLOCKERS = ["public_hidden", "photos_required"] as const;
 
 type Blocker = (typeof BLOCKERS)[number];
 
@@ -23,21 +13,11 @@ function isBlocker(value: string): value is Blocker {
 export function clientPublishLock(vehicle: {
   publishReady: boolean;
   publishBlockers: string[];
-  contractEndsAt?: number;
   publishGrandfathered?: boolean;
 }) {
-  if (vehicle.publishGrandfathered) {
-    return { ready: true, blockers: [] as string[] };
-  }
-  const expired =
-    vehicle.contractEndsAt !== undefined && vehicle.contractEndsAt < Date.now();
-  const blockers = [...vehicle.publishBlockers];
-  if (expired && !blockers.includes("contract_expired")) {
-    blockers.push("contract_expired");
-  }
   return {
-    ready: vehicle.publishReady && !expired,
-    blockers,
+    ready: vehicle.publishReady,
+    blockers: [...vehicle.publishBlockers],
   };
 }
 

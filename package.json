@@ -18,6 +18,7 @@
     "jose": "^6.2.9",
     "next": "16.3.1",
     "next-intl": "^4.13.6",
+    "qrcode": "^1.5.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "xlsx": "^0.18.5"
@@ -26,6 +27,7 @@
     "@convex-dev/eslint-plugin": "^4.0.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

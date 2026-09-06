@@ -1,8 +1,10 @@
 import { paginationOptsValidator } from "convex/server";
 import { ConvexError, v } from "convex/values";
-import { authedMutation, authedQuery } from "./lib/customFunctions";
+import { adminMutation, authedMutation, authedQuery } from "./lib/customFunctions";
 import { applyContractFields, assertContractUpload, sanitizeContractFileName } from "./lib/contracts";
 import { logAudit } from "./lib/audit";
+import { resolvePriceMode } from "./lib/pricing";
+import { scheduleQrSync } from "./lib/qrSync";
 import {
   contractStatusValidator,
   staffVehicleValidator,
@@ -83,12 +85,12 @@ export const create = authedMutation({
     });
     const status = args.status ?? "approved";
     if (status === "published" || status === "approved_for_publishing") {
-      throw new ConvexError("Cannot publish until inspection, signed contract, and on-site confirmation");
+      throw new ConvexError("Cannot publish: photos_required");
     }
     const publicHidden = args.publicHidden ?? false;
     const onSiteConfirmed = args.onSiteConfirmed ?? false;
 
-    return await ctx.db.insert("vehicles", {
+    const vehicleId = await ctx.db.insert("vehicles", {
       stockCode,
       slug,
       vin: args.vin,
@@ -97,6 +99,8 @@ export const create = authedMutation({
       year: args.year,
       trim: args.trim,
       priceOmr: args.priceOmr,
+      priceMode: resolvePriceMode(args.priceMode),
+      financeMonthlyOmr: resolvePriceMode(args.priceMode) === "finance" ? args.financeMonthlyOmr : undefined,
       mileageKm: args.mileageKm,
       fuel: args.fuel,
       transmission: args.transmission,
@@ -139,6 +143,8 @@ export const create = authedMutation({
       createdAt: now,
       updatedAt: now,
     });
+    await scheduleQrSync(ctx, vehicleId);
+    return vehicleId;
   },
 });
 
@@ -184,6 +190,8 @@ export const update = authedMutation({
       year: args.year,
       trim: args.trim,
       priceOmr: args.priceOmr,
+      priceMode: resolvePriceMode(args.priceMode),
+      financeMonthlyOmr: resolvePriceMode(args.priceMode) === "finance" ? args.financeMonthlyOmr : undefined,
       mileageKm: args.mileageKm,
       fuel: args.fuel,
       transmission: args.transmission,
@@ -232,6 +240,7 @@ export const update = authedMutation({
       staffNotes: args.staffNotes,
       updatedAt: Date.now(),
     });
+    await scheduleQrSync(ctx, args.vehicleId);
     return null;
   },
 });
@@ -332,7 +341,7 @@ export const setPublicHiddenMany = authedMutation({
   },
 });
 
-export const remove = authedMutation({
+export const remove = adminMutation({
   args: { vehicleId: v.id("vehicles") },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -344,7 +353,7 @@ export const remove = authedMutation({
   },
 });
 
-export const removeMany = authedMutation({
+export const removeMany = adminMutation({
   args: {
     vehicleIds: v.array(v.id("vehicles")),
   },

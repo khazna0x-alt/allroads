@@ -2,7 +2,6 @@ import { ConvexError } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { latestInspection, logAudit } from "./audit";
-import { isOnPublicFloor } from "./publish";
 import { applyVehicleStatus } from "./vehicles";
 import type { VehicleStatus } from "./vehicleStatus";
 
@@ -67,8 +66,6 @@ export async function applyContractFields(
   const contractStatus = expiredByDate ? "expired" : nextStatus;
   const datesChanged =
     args.contractStartsAt !== undefined || args.contractEndsAt !== undefined;
-  const hideExpired = contractStatus === "expired" && isOnPublicFloor(vehicle);
-
   await ctx.db.patch("vehicles", vehicle._id, {
     ...(contractStatus !== undefined ? { contractStatus } : {}),
     ...(args.contractStartsAt !== undefined || vehicle.contractStartsAt !== undefined
@@ -78,7 +75,6 @@ export async function applyContractFields(
       ? { contractEndsAt: args.contractEndsAt ?? vehicle.contractEndsAt }
       : {}),
     ...(datesChanged ? { contractExpiryAlertedAt: undefined } : {}),
-    ...(hideExpired ? { publicHidden: true } : {}),
     updatedAt: now,
   });
 

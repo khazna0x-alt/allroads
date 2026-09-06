@@ -2,9 +2,10 @@
 
 import { useMutation, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
-import { useRouter, useSearchParams } from "next/navigation";
+import { notFound, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, use } from "react";
 import { VehicleForm } from "@/components/admin/VehicleForm";
+import { VehicleQrCard } from "@/components/admin/VehicleQrCard";
 import { useConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { AdminButton, GoldRule, PageHeader, staffInventoryPath } from "@/components/admin/ui";
 import { api, type Id } from "@/lib/convex";
@@ -35,26 +36,16 @@ function EditVehicleDesk({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const vehicleId = id as Id<"vehicles">;
   const vehicle = useQuery(api.vehicles.getStaff, { vehicleId });
+  const me = useQuery(api.staff.me);
   const removeVehicle = useMutation(api.vehicles.remove);
+  const isAdmin = me?.role === "admin";
   const backHref = staffInventoryPath(searchParams.get("status"));
 
   if (vehicle === undefined) {
     return <p className="text-sm text-[var(--ivory-dim)]">{tInventory("loading")}</p>;
   }
   if (vehicle === null) {
-    return (
-      <div>
-        <PageHeader
-          kicker={tInventory("title")}
-          title={tInventory("notFound")}
-          back={
-            <AdminButton href={backHref} variant="ghost">
-              {tInventory("back")}
-            </AdminButton>
-          }
-        />
-      </div>
-    );
+    notFound();
   }
 
   return (
@@ -68,31 +59,36 @@ function EditVehicleDesk({ params }: { params: Promise<{ id: string }> }) {
           </AdminButton>
         }
         actions={
-          <AdminButton
-            variant="danger"
-            onClick={() => {
-              void confirm({
-                title: t("confirm.deleteTitle"),
-                message: t("confirm.delete"),
-                confirmLabel: tInventory("delete"),
-                cancelLabel: t("confirm.cancel"),
-                tone: "danger",
-              }).then((result) => {
-                if (!result.confirmed) {
-                  return;
-                }
-                void removeVehicle({ vehicleId }).then(() => {
-                  router.replace(backHref);
+          isAdmin ? (
+            <AdminButton
+              variant="danger"
+              onClick={() => {
+                void confirm({
+                  title: t("confirm.deleteTitle"),
+                  message: t("confirm.delete"),
+                  confirmLabel: tInventory("delete"),
+                  cancelLabel: t("confirm.cancel"),
+                  tone: "danger",
+                }).then((result) => {
+                  if (!result.confirmed) {
+                    return;
+                  }
+                  void removeVehicle({ vehicleId }).then(() => {
+                    router.replace(backHref);
+                  });
                 });
-              });
-            }}
-          >
-            {tInventory("delete")}
-          </AdminButton>
+              }}
+            >
+              {tInventory("delete")}
+            </AdminButton>
+          ) : undefined
         }
       />
       <GoldRule className="mb-8 mt-6" />
-      <VehicleForm vehicleId={vehicleId} initial={vehicle} />
+      <div className="space-y-6">
+        <VehicleQrCard vehicleId={vehicleId} stockCode={vehicle.stockCode} />
+        <VehicleForm vehicleId={vehicleId} initial={vehicle} />
+      </div>
     </div>
   );
 }

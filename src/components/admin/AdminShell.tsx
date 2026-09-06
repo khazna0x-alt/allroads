@@ -8,6 +8,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { AdminLocaleSwitcher } from "@/components/admin/AdminLocaleSwitcher";
 import { Mark } from "@/components/brand/Mark";
+import { isAdminOnlyPath, staffNavLinks } from "@/lib/adminAccess";
 import { api } from "@/lib/convex";
 
 export function AdminShell({ children }: { children: ReactNode }) {
@@ -20,16 +21,6 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const me = useQuery(api.staff.me, isLogin || isLoading || !isAuthenticated ? "skip" : {});
   const [menuPath, setMenuPath] = useState<string | null>(null);
   const menuOpen = menuPath === pathname;
-
-  const links = [
-    { href: "/admin", label: t("nav.overview") },
-    { href: "/admin/inventory", label: t("nav.inventory") },
-    { href: "/admin/consignments", label: t("nav.consignments") },
-    { href: "/admin/inquiries", label: t("nav.inquiries") },
-    { href: "/admin/bookings", label: t("nav.bookings") },
-    { href: "/admin/import", label: t("nav.excel") },
-    { href: "/admin/staff", label: t("nav.staff") },
-  ];
 
   useEffect(() => {
     if (isLogin || isLoading || isAuthenticated) {
@@ -99,6 +90,23 @@ export function AdminShell({ children }: { children: ReactNode }) {
     void signOut().then(() => router.replace("/admin/login"));
   };
 
+  const links = staffNavLinks(
+    [
+      { href: "/admin", label: t("nav.overview") },
+      { href: "/admin/guide", label: t("nav.guide") },
+      { href: "/admin/inventory", label: t("nav.inventory") },
+      { href: "/admin/consignments", label: t("nav.consignments") },
+      { href: "/admin/inquiries", label: t("nav.inquiries") },
+      { href: "/admin/bookings", label: t("nav.bookings") },
+      { href: "/admin/import", label: t("nav.excel") },
+      { href: "/admin/staff", label: t("nav.staff") },
+    ],
+    me.role,
+  );
+
+  const deskContent =
+    me.role !== "admin" && isAdminOnlyPath(pathname) ? <DeskForbidden /> : children;
+
   return (
     <div className="admin-desk min-h-svh lg:grid lg:grid-cols-[16.5rem_minmax(0,1fr)]">
       <a
@@ -161,8 +169,22 @@ export function AdminShell({ children }: { children: ReactNode }) {
         />
       </aside>
       <div id="admin-main" className="min-w-0 scroll-mt-20 p-4 sm:p-6 lg:p-10">
-        {children}
+        {deskContent}
       </div>
+    </div>
+  );
+}
+
+function DeskForbidden() {
+  const t = useTranslations("Admin.notFound");
+  return (
+    <div>
+      <p className="admin-kicker">404</p>
+      <h1 className="font-display mt-2 text-3xl text-pretty">{t("title")}</h1>
+      <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--ivory-dim)] text-pretty">{t("lead")}</p>
+      <Link href="/admin" className="admin-btn admin-btn-primary mt-8 inline-flex">
+        {t("home")}
+      </Link>
     </div>
   );
 }

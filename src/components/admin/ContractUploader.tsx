@@ -112,8 +112,8 @@ export function BlankConsignmentFormLink() {
   const t = useTranslations("Admin.consignments");
   return (
     <a
-      href="/Vehicle Deposit Contract - AllRoads Cars.pdf"
-      download="vehicle-deposit-contract.pdf"
+      href="/consignment-agreement.pdf"
+      download="allroads-consignment-agreement.pdf"
       className="admin-btn admin-btn-secondary"
     >
       {t("blankForm")}

@@ -91,6 +91,7 @@ async function scheduleInquiryFollowUp(
     phone: string;
     email?: string;
     subject: string;
+    message?: string;
     viewingRequested: boolean;
     source: "web_form" | "consignment" | "waagents" | "whatsapp";
     handoffReason?: string;
@@ -106,6 +107,7 @@ async function scheduleInquiryFollowUp(
       phone: args.phone,
       ...(args.email ? { email: args.email } : {}),
       subject: args.subject,
+      ...(args.message ? { message: args.message } : {}),
       viewingRequested: args.viewingRequested,
       source: args.source,
       ...(args.handoffReason ? { handoffReason: args.handoffReason } : {}),
@@ -198,6 +200,7 @@ export const createInquiry = mutation({
       phone,
       email,
       subject,
+      message,
       viewingRequested,
       source: args.source ?? "web_form",
     });
@@ -308,6 +311,7 @@ export const createFromWaAgents = internalMutation({
       phone,
       email,
       subject,
+      message: args.message.trim(),
       viewingRequested: args.viewingRequested,
       source: "waagents",
       handoffReason: args.handoffReason,
@@ -437,6 +441,7 @@ export const submitConsignment = mutation({
       year: args.year,
       trim: args.trim,
       priceOmr: args.priceOmr,
+      priceMode: "buy" as const,
       mileageKm: args.mileageKm,
       fuel: args.fuel ?? "petrol",
       transmission: args.transmission ?? "automatic",

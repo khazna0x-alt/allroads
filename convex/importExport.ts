@@ -11,7 +11,10 @@ import {
   specValidator,
   transmissionValidator,
   vehicleStatusValidator,
+  priceModeValidator,
 } from "./lib/validators";
+import { resolvePriceMode } from "./lib/pricing";
+import { scheduleQrSync } from "./lib/qrSync";
 import {
   assertUniqueStockAndVin,
   buildVehicleSearchText,
@@ -29,6 +32,8 @@ const importRowValidator = v.object({
   year: v.number(),
   trim: v.optional(v.string()),
   priceOmr: v.number(),
+  priceMode: v.optional(priceModeValidator),
+  financeMonthlyOmr: v.optional(v.number()),
   mileageKm: v.number(),
   fuel: v.optional(fuelValidator),
   transmission: v.optional(transmissionValidator),
@@ -60,6 +65,8 @@ export const exportVehicles = adminQuery({
       year: v.number(),
       trim: v.string(),
       priceOmr: v.number(),
+      priceMode: priceModeValidator,
+      financeMonthlyOmr: v.optional(v.number()),
       mileageKm: v.number(),
       fuel: fuelValidator,
       transmission: transmissionValidator,
@@ -90,6 +97,8 @@ export const exportVehicles = adminQuery({
       year: vehicle.year,
       trim: vehicle.trim ?? "",
       priceOmr: vehicle.priceOmr,
+      priceMode: resolvePriceMode(vehicle.priceMode),
+      financeMonthlyOmr: vehicle.financeMonthlyOmr,
       mileageKm: vehicle.mileageKm,
       fuel: vehicle.fuel,
       transmission: vehicle.transmission,
@@ -186,6 +195,11 @@ export const importVehicles = adminMutation({
         year: row.year,
         trim,
         priceOmr: row.priceOmr,
+        priceMode: resolvePriceMode(row.priceMode ?? existing?.priceMode),
+        financeMonthlyOmr:
+          resolvePriceMode(row.priceMode ?? existing?.priceMode) === "finance"
+            ? (row.financeMonthlyOmr ?? existing?.financeMonthlyOmr)
+            : undefined,
         mileageKm: row.mileageKm,
         fuel: row.fuel ?? existing?.fuel ?? "petrol",
         transmission: row.transmission ?? existing?.transmission ?? "automatic",
@@ -239,13 +253,15 @@ export const importVehicles = adminMutation({
               ? (existing.publishedAt ?? now)
               : existing.publishedAt,
         });
+        await scheduleQrSync(ctx, existing._id);
       } else {
         await assertUniqueStockAndVin(ctx, { stockCode, vin: payload.vin });
-        await ctx.db.insert("vehicles", {
+        const vehicleId = await ctx.db.insert("vehicles", {
           ...payload,
           publishedAt: payload.status === "published" ? now : undefined,
           createdAt: now,
         });
+        await scheduleQrSync(ctx, vehicleId);
       }
       upserted += 1;
     }
@@ -266,6 +282,7 @@ export const importVehicles = adminMutation({
               updatedAt: now,
             });
           }
+          await scheduleQrSync(ctx, vehicle._id);
           marked += 1;
         }
       }

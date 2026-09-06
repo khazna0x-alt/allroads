@@ -3,6 +3,13 @@
 import { useQuery } from "convex/react";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
+import { useState } from "react";
+import {
+  FunnelStrip,
+  ShareBars,
+  SparkBars,
+  ValuePlate,
+} from "@/components/admin/DeskCharts";
 import {
   AdminButton,
   DeskSection,
@@ -39,17 +46,20 @@ export default function AdminHomePage() {
   const tStatus = useTranslations("Admin.status");
   const tSource = useTranslations("Admin.inquirySource");
   const locale = useLocale();
+  const [now] = useState(() => Date.now());
   const me = useQuery(api.staff.me);
   const stats = useQuery(api.vehicles.dashboardStats);
+  const analytics = useQuery(api.analytics.deskAnalytics, { now });
   const pending = useQuery(api.vehicles.listRecentPending, { limit: 5 });
   const inquiries = useQuery(api.inquiries.listRecent, { limit: 6 });
   const inquiryStats = useQuery(api.inquiries.deskStats);
   const bookingStats = useQuery(api.bookings.deskStats);
   const role = me?.role ? tRoles(me.role) : "";
+  const isAdmin = me?.role === "admin";
   const queueCount = stats?.queueCount ?? 0;
   const newLeads = inquiryStats?.newCount ?? 0;
   const maxStatus = stats ? Math.max(...STATUSES.map((status) => stats.byStatus[status]), 1) : 1;
-  const ready = Boolean(stats && pending && inquiries && inquiryStats && bookingStats);
+  const ready = Boolean(stats && pending && inquiries && inquiryStats && bookingStats && analytics);
   const needsDecision = queueCount > 0 || newLeads > 0;
 
   return (
@@ -66,13 +76,13 @@ export default function AdminHomePage() {
             <AdminButton href="/admin/consignments" variant={queueCount > 0 ? "danger" : "secondary"}>
               {queueCount > 0 ? t("reviewQueueCount", { count: queueCount }) : t("reviewQueue")}
             </AdminButton>
-            <AdminButton href="/admin/import">{t("importExcel")}</AdminButton>
+            {isAdmin ? <AdminButton href="/admin/import">{t("importExcel")}</AdminButton> : null}
           </>
         }
       />
       <GoldRule />
 
-      {ready && stats && pending && inquiries && inquiryStats && bookingStats ? (
+      {ready && stats && pending && inquiries && inquiryStats && bookingStats && analytics ? (
         <div className="admin-desk-stack mt-8">
           {needsDecision ? (
             <Link href={queueCount > 0 ? "/admin/consignments" : "/admin/inquiries"} className="admin-attention admin-reveal block">
@@ -121,6 +131,92 @@ export default function AdminHomePage() {
                 alert={bookingStats.reservedCount > 0}
               />
             </div>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+            <ValuePlate
+              label={t("charts.floorValue")}
+              hint={t("charts.floorValueHint")}
+              value={analytics.floorValueOmr}
+              locale={locale}
+            />
+            <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-3">
+              <Metric
+                href="/admin/inventory?status=published"
+                label={t("charts.buyPrice")}
+                hint={t("charts.buyPriceHint")}
+                value={analytics.pricedOnFloor}
+              />
+              <Metric
+                href="/admin/inventory?status=published"
+                label={t("charts.requestPrice")}
+                hint={t("charts.requestPriceHint")}
+                value={analytics.requestOnFloor}
+              />
+              <Metric
+                href="/admin/inventory?status=published"
+                label={t("charts.financePrice")}
+                hint={t("charts.financePriceHint")}
+                value={analytics.financeOnFloor}
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Metric
+              href="/admin/inquiries"
+              label={t("charts.inquiries30d")}
+              hint={t("charts.inquiries30dHint")}
+              value={analytics.inquiries30d}
+            />
+            <Metric
+              href="/admin/bookings"
+              label={t("charts.bookings30d")}
+              hint={t("charts.bookings30dHint")}
+              value={analytics.bookings30d}
+            />
+          </div>
+
+          <FunnelStrip
+            title={t("charts.funnelTitle")}
+            hint={t("charts.funnelHint")}
+            steps={[
+              { label: t("charts.funnelQueue"), value: analytics.pipeline.queue },
+              { label: t("charts.funnelReady"), value: analytics.pipeline.ready },
+              { label: t("charts.funnelFloor"), value: analytics.pipeline.floor },
+              { label: t("charts.funnelSold"), value: analytics.pipeline.sold },
+            ]}
+          />
+
+          <div className="grid gap-6 xl:grid-cols-2">
+            <SparkBars
+              title={t("charts.inquiriesTitle")}
+              hint={t("charts.inquiriesHint")}
+              points={analytics.inquirySeries}
+              locale={locale}
+            />
+            <SparkBars
+              title={t("charts.bookingsTitle")}
+              hint={t("charts.bookingsHint")}
+              points={analytics.bookingSeries}
+              locale={locale}
+            />
+          </div>
+
+          <div className="grid gap-6 xl:grid-cols-2">
+            <ShareBars
+              title={t("charts.makesTitle")}
+              hint={t("charts.makesHint")}
+              rows={analytics.makesOnFloor.map((row) => ({ ...row, label: row.key }))}
+            />
+            <ShareBars
+              title={t("charts.sourcesTitle")}
+              hint={t("charts.sourcesHint")}
+              rows={analytics.inquirySources.map((row) => ({
+                ...row,
+                label: row.key,
+              }))}
+            />
           </div>
 
           <section className="admin-card admin-reveal p-5 sm:p-6">

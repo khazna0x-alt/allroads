@@ -13,9 +13,6 @@ type DeskVehicle = {
   status: string;
   publishReady: boolean;
   publishBlockers: string[];
-  publishGrandfathered?: boolean;
-  onSiteConfirmed: boolean;
-  contractEndsAt?: number;
   staffNotes?: string;
 };
 
@@ -37,13 +34,10 @@ export function OwnerDeskActions({
   const approveTitle = lock.ready
     ? undefined
     : publishLockTitle(lock.blockers, (key) => t(`publishBlockers.${key}`));
-  const inPipeline =
-    vehicle.status === "new" ||
-    vehicle.status === "under_review" ||
-    vehicle.status === "inspection_scheduled" ||
-    vehicle.status === "under_inspection" ||
-    vehicle.status === "awaiting_contract" ||
-    vehicle.status === "approved";
+  const live =
+    vehicle.status === "published" || vehicle.status === "reserved" || vehicle.status === "booked";
+  const canPublishNow =
+    !live && vehicle.status !== "sold" && vehicle.status !== "not_accepted" && vehicle.status !== "withdrawn";
 
   async function saveNotes(formData: FormData) {
     setNotesError("");
@@ -79,25 +73,11 @@ export function OwnerDeskActions({
             {t("consignments.startInspection")}
           </AdminButton>
         ) : null}
-        {inPipeline ? (
+        {canPublishNow ? (
           <AdminButton
             variant="primary"
             disabled={!lock.ready}
             title={approveTitle}
-            onClick={() =>
-              void setStatus({ vehicleId: vehicle._id, status: "approved_for_publishing" })
-            }
-          >
-            {t("consignments.approveForPublish")}
-          </AdminButton>
-        ) : null}
-        {vehicle.status === "approved_for_publishing" ? (
-          <AdminButton
-            variant="primary"
-            disabled={!lock.ready || !vehicle.onSiteConfirmed}
-            title={
-              !vehicle.onSiteConfirmed ? t("publishBlockers.not_on_site") : approveTitle
-            }
             onClick={() => void setStatus({ vehicleId: vehicle._id, status: "published" })}
           >
             {t("consignments.publish")}

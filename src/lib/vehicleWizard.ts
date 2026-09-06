@@ -10,6 +10,8 @@ export type VehicleDraft = {
   year: number;
   trim: string;
   priceOmr: number;
+  priceMode: "buy" | "request" | "finance";
+  financeMonthlyOmr: number;
   mileageKm: number;
   fuel: "petrol" | "diesel" | "hybrid" | "plugin_hybrid" | "electric";
   transmission: "automatic" | "manual";
@@ -43,6 +45,8 @@ export const emptyVehicleDraft = (): VehicleDraft => ({
   year: 2020,
   trim: "",
   priceOmr: 0,
+  priceMode: "buy",
+  financeMonthlyOmr: 0,
   mileageKm: 0,
   fuel: "petrol",
   transmission: "automatic",
@@ -93,9 +97,14 @@ export function identityComplete(draft: VehicleDraft): boolean {
 }
 
 export function specsComplete(draft: VehicleDraft): boolean {
+  const priced =
+    draft.priceMode === "request"
+      ? true
+      : draft.priceMode === "finance"
+        ? Number.isFinite(draft.financeMonthlyOmr) && draft.financeMonthlyOmr > 0
+        : Number.isFinite(draft.priceOmr) && draft.priceOmr > 0;
   return (
-    Number.isFinite(draft.priceOmr) &&
-    draft.priceOmr > 0 &&
+    priced &&
     Number.isFinite(draft.mileageKm) &&
     draft.mileageKm >= 0 &&
     filled(draft.exteriorColor) &&

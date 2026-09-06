@@ -37,6 +37,8 @@ export type ImportVehicleRow = {
   year: number;
   trim?: string;
   priceOmr: number;
+  priceMode?: "buy" | "request" | "finance";
+  financeMonthlyOmr?: number;
   mileageKm: number;
   fuel?: ImportFuel;
   transmission?: ImportTransmission;
@@ -117,7 +119,7 @@ export const SHOWROOM_INSTRUCTIONS = [
   { Column: "Seats", Meaning: "5-seater, 7-seater, or BUS." },
   { Column: "Model", Meaning: "Year (2018), not the model name." },
   { Column: "KM", Meaning: "150.000 KM, 46585 KM, or BRAND NEW." },
-  { Column: "Price", Meaning: "Price in OMR." },
+  { Column: "Price", Meaning: "Buy price in OMR, or RFP / طلب for request-for-pricing." },
   { Column: "Notes", Meaning: "BOOKED or RESERVED keeps the car on the floor. SOLD marks it sold. HIDDEN withdraws it. Leave blank to publish." },
 ];
 
@@ -246,6 +248,8 @@ type CanonicalField =
   | "km"
   | "mileageKm"
   | "priceOmr"
+  | "priceMode"
+  | "financeMonthlyOmr"
   | "fuel"
   | "transmission"
   | "drivetrain"
@@ -289,6 +293,10 @@ const HEADER_ALIASES: Record<string, CanonicalField> = {
   mileagekm: "mileageKm",
   price: "priceOmr",
   priceomr: "priceOmr",
+  pricemode: "priceMode",
+  financing: "financeMonthlyOmr",
+  financemonthly: "financeMonthlyOmr",
+  financemonthlyomr: "financeMonthlyOmr",
   fuel: "fuel",
   transmission: "transmission",
   drivetrain: "drivetrain",
@@ -410,6 +418,8 @@ function parseShowroomRow(
   if (priceOmr === undefined) {
     return { error: `Missing or invalid Price (${cellText(mapped.priceOmr) || "empty"})` };
   }
+  const priceMode = parsePriceMode(mapped.priceMode, priceOmr);
+  const financeMonthlyOmr = parsePrice(mapped.financeMonthlyOmr);
 
   const mileage = parseMileage(mapped.km ?? mapped.mileageKm);
   const seats = cellText(mapped.seats);
@@ -430,6 +440,8 @@ function parseShowroomRow(
       year,
       trim: parsedName.trim,
       priceOmr,
+      priceMode,
+      financeMonthlyOmr: priceMode === "finance" ? financeMonthlyOmr : undefined,
       mileageKm: mileage.km,
       condition: mileage.condition,
       exteriorColor: color,
@@ -452,6 +464,8 @@ function parseFullRow(
   const year = parseYear(mapped.year);
   const priceOmr = parsePrice(mapped.priceOmr);
   const mileage = parseMileage(mapped.mileageKm ?? mapped.km);
+  const priceMode = parsePriceMode(mapped.priceMode, priceOmr ?? 0);
+  const financeMonthlyOmr = parsePrice(mapped.financeMonthlyOmr);
 
   if (!make || !model) {
     return { error: "Make and model are required" };
@@ -459,8 +473,11 @@ function parseFullRow(
   if (year === undefined) {
     return { error: "Year is required" };
   }
-  if (priceOmr === undefined) {
+  if (priceMode === "buy" && priceOmr === undefined) {
     return { error: "Price is required" };
+  }
+  if (priceMode === "finance" && !(financeMonthlyOmr && financeMonthlyOmr > 0)) {
+    return { error: "Finance monthly price is required" };
   }
 
   const notes = parseNotes(mapped.notes ?? mapped.status ?? mapped.staffNotes);
@@ -517,7 +534,9 @@ function parseFullRow(
       model,
       year,
       trim: cellText(mapped.trim),
-      priceOmr,
+      priceOmr: priceOmr ?? 0,
+      priceMode,
+      financeMonthlyOmr: priceMode === "finance" ? financeMonthlyOmr : undefined,
       mileageKm: mileage.km,
       fuel,
       transmission,
@@ -615,12 +634,29 @@ function parsePrice(value: unknown): number | undefined {
   if (!raw) {
     return undefined;
   }
+  if (/^(rfp|ask|طلب)/i.test(raw)) {
+    return 0;
+  }
   const european = raw.match(/^(\d{1,3}(?:\.\d{3})+)(?:[.,]\d+)?$/);
   if (european?.[1]) {
     return Number(european[1].replace(/\./g, ""));
   }
   const cleaned = Number(raw.replace(/,/g, ""));
   return Number.isFinite(cleaned) ? cleaned : undefined;
+}
+
+function parsePriceMode(value: unknown, priceOmr: number): "buy" | "request" | "finance" {
+  const raw = cellText(value).toLowerCase();
+  if (raw.includes("request") || raw.includes("rfp") || raw.includes("ask") || raw.includes("طلب")) {
+    return "request";
+  }
+  if (raw.includes("finance") || raw.includes("monthly") || raw.includes("تمويل")) {
+    return "finance";
+  }
+  if (priceOmr <= 0) {
+    return "request";
+  }
+  return "buy";
 }
 
 function parseMileage(value: unknown): { km: number; condition?: ImportCondition } {
@@ -771,6 +807,8 @@ export function toShowroomExportRow(vehicle: {
   year: number;
   trim: string;
   priceOmr: number;
+  priceMode?: "buy" | "request" | "finance";
+  financeMonthlyOmr?: number;
   mileageKm: number;
   condition: ImportCondition;
   bodyType: ImportBodyType;
@@ -817,7 +855,12 @@ export function toShowroomExportRow(vehicle: {
     Seats: seats,
     Model: vehicle.year,
     KM: km,
-    Price: vehicle.priceOmr,
+    Price:
+      vehicle.priceMode === "request"
+        ? "RFP"
+        : vehicle.priceMode === "finance"
+          ? vehicle.financeMonthlyOmr ?? vehicle.priceOmr
+          : vehicle.priceOmr,
     Notes: notes,
   };
 }

@@ -53,6 +53,17 @@ export function normalizeOmaniPhone(raw: string): string {
   return local;
 }
 
+export function internationalOmaniPhone(local: string): string {
+  const digits = local.replace(/\D/g, "");
+  if (digits.length === 8) {
+    return `+968${digits}`;
+  }
+  if (digits.startsWith("968") && digits.length === 11) {
+    return `+${digits}`;
+  }
+  return local.trim();
+}
+
 export function slugify(value: string): string {
   return value
     .trim()

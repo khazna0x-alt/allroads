@@ -10,7 +10,9 @@ import { PhotoCarousel } from "@/components/inventory/PhotoCarousel";
 import { PhotoLightbox } from "@/components/inventory/PhotoLightbox";
 import { VehicleCard } from "@/components/inventory/VehicleCard";
 import { api } from "@/lib/convex";
-import { cylindersFromEngine, formatDate, formatKm, formatOmr } from "@/lib/format";
+import { notFound } from "next/navigation";
+import { cylindersFromEngine, formatDate, formatKm } from "@/lib/format";
+import { formatVehiclePrice } from "@/lib/pricing";
 import { vehiclePublicUrl, whatsappHref } from "@/lib/listing";
 import { arabicMake } from "@/lib/vehicleCopy";
 
@@ -86,7 +88,7 @@ export function VehicleDetail({ slug }: { slug: string }) {
     );
   }
   if (vehicle === null) {
-    return <div className="px-4 py-20 text-center sm:px-5">{t("empty")}</div>;
+    notFound();
   }
 
   const title = locale === "ar" ? vehicle.titleAr : vehicle.titleEn;
@@ -95,13 +97,14 @@ export function VehicleDetail({ slug }: { slug: string }) {
     url: photo.url,
     alt: locale === "ar" ? photo.altAr : photo.altEn,
   }));
+  const priceLabel = formatVehiclePrice(vehicle, locale, t);
   const listingUrl = vehiclePublicUrl(vehicle.slug, locale);
   const whatsapp = whatsappHref(
     t("whatsappMessage", {
       title,
       year: vehicle.year,
       stock: vehicle.stockCode,
-      price: formatOmr(vehicle.priceOmr, locale),
+      price: priceLabel,
       url: listingUrl,
     }),
   );
@@ -120,7 +123,7 @@ export function VehicleDetail({ slug }: { slug: string }) {
       </p>
       <h1 className="font-display mt-3 text-3xl break-words sm:text-4xl md:text-5xl">{title}</h1>
       <p className="mt-3 text-xl text-[var(--sand-bright)] sm:text-2xl">
-        {formatOmr(vehicle.priceOmr, locale)}
+        {priceLabel}
       </p>
       <p className="mt-2 text-sm text-[var(--ivory-dim)]">
         {t("updated")}: {formatDate(vehicle.updatedAt, locale)}
@@ -152,7 +155,7 @@ export function VehicleDetail({ slug }: { slug: string }) {
             <Spec label={t("model")} value={vehicle.model} />
             <Spec label={t("body")} value={t(`bodyTypes.${vehicle.bodyType}`)} />
             <Spec label={t("year")} value={String(vehicle.year)} />
-            <Spec label={t("price")} value={formatOmr(vehicle.priceOmr, locale)} />
+            <Spec label={t("price")} value={priceLabel} />
             <Spec label={t("mileage")} value={formatKm(vehicle.mileageKm, locale)} />
             <Spec label={t("spec")} value={t(vehicle.spec)} />
             <Spec label={t("exteriorColor")} value={vehicle.exteriorColor} />
@@ -270,7 +273,9 @@ export function VehicleDetail({ slug }: { slug: string }) {
                       ? t("bookBlockedReserved")
                       : vehicle.status === "booked"
                         ? t("bookBlockedBooked")
-                        : undefined
+                        : !vehicle.canBook
+                          ? t("bookBlockedPricing")
+                          : undefined
                   }
                 />
               </div>

@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
+import { notFound } from "next/navigation";
 import { useState } from "react";
 import * as XLSX from "xlsx";
 import { AdminButton, AdminSelect, DeskCard, GoldRule, PageHeader } from "@/components/admin/ui";
@@ -17,11 +18,16 @@ import {
 
 export default function ImportPage() {
   const t = useTranslations("Admin.import");
-  const rows = useQuery(api.importExport.exportVehicles);
+  const me = useQuery(api.staff.me);
+  const rows = useQuery(api.importExport.exportVehicles, me?.role === "admin" ? {} : "skip");
   const importVehicles = useMutation(api.importExport.importVehicles);
   const [message, setMessage] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+
+  if (me && me.role !== "admin") {
+    notFound();
+  }
 
   function exportWorkbook() {
     const sheet = XLSX.utils.json_to_sheet(rows ?? []);
@@ -107,7 +113,25 @@ export default function ImportPage() {
     <div>
       <PageHeader kicker={t("kicker")} title={t("title")} lead={t("lead")} />
       <GoldRule />
-      <div className="mt-8 grid gap-6 lg:grid-cols-2">
+      <DeskCard className="mt-8">
+        <h2 className="font-display text-xl">{t("howTitle")}</h2>
+        <ol className="mt-5 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+          {(
+            [
+              ["how1Title", "how1Body"],
+              ["how2Title", "how2Body"],
+              ["how3Title", "how3Body"],
+              ["how4Title", "how4Body"],
+            ] as const
+          ).map(([titleKey, bodyKey]) => (
+            <li key={titleKey} className="border border-[var(--line)] px-4 py-3">
+              <h3 className="text-sm font-semibold text-[var(--ivory)]">{t(titleKey)}</h3>
+              <p className="mt-2 text-sm text-[var(--ivory-dim)] text-pretty">{t(bodyKey)}</p>
+            </li>
+          ))}
+        </ol>
+      </DeskCard>
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <DeskCard>
           <h2 className="font-display text-xl">{t("export")}</h2>
           <p className="mt-2 text-sm text-[var(--ivory-dim)]">{t("exportHint")}</p>

@@ -1,9 +1,7 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { internalMutation } from "./_generated/server";
-import { logAudit, logVehicleStatusChange } from "./lib/audit";
-import { isOnPublicFloor } from "./lib/publish";
-import { mapLegacyVehicleStatus } from "./lib/vehicleStatus";
+import { logAudit } from "./lib/audit";
 
 const ALERT_MS = 14 * 24 * 60 * 60 * 1000;
 const BATCH = 25;
@@ -40,12 +38,8 @@ export const sweepExpiring = internalMutation({
       }
 
       if (endsAt < now) {
-        const fromStatus = mapLegacyVehicleStatus(vehicle.status);
-        const onFloor = isOnPublicFloor(vehicle);
         await ctx.db.patch("vehicles", vehicle._id, {
           contractStatus: "expired",
-          publicHidden: onFloor ? true : vehicle.publicHidden,
-          status: onFloor ? "expired" : vehicle.status,
           updatedAt: now,
         });
         await logAudit(ctx, {
@@ -54,14 +48,6 @@ export const sweepExpiring = internalMutation({
           fromValue: vehicle.contractStatus,
           toValue: "expired",
         });
-        if (onFloor && fromStatus !== "expired") {
-          await logVehicleStatusChange(ctx, {
-            vehicleId: vehicle._id,
-            fromStatus,
-            toStatus: "expired",
-            notes: "Contract expired while live",
-          });
-        }
         await ctx.scheduler.runAfter(0, internal.notifications.notifyContractExpiry, {
           vehicleId: vehicle._id,
           stockCode: vehicle.stockCode,

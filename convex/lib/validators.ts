@@ -5,6 +5,12 @@ export const staffRoleValidator = v.union(
   v.literal("editor"),
 );
 
+export const priceModeValidator = v.union(
+  v.literal("buy"),
+  v.literal("request"),
+  v.literal("finance"),
+);
+
 export const vehicleStatusValidator = v.union(
   v.literal("new"),
   v.literal("under_review"),
@@ -206,6 +212,8 @@ export const vehicleWriteValidator = {
   year: v.number(),
   trim: v.optional(v.string()),
   priceOmr: v.number(),
+  priceMode: v.optional(priceModeValidator),
+  financeMonthlyOmr: v.optional(v.number()),
   mileageKm: v.number(),
   fuel: fuelValidator,
   transmission: transmissionValidator,
@@ -244,6 +252,8 @@ export const publicVehicleValidator = v.object({
   year: v.number(),
   trim: v.optional(v.string()),
   priceOmr: v.number(),
+  priceMode: priceModeValidator,
+  financeMonthlyOmr: v.optional(v.number()),
   mileageKm: v.number(),
   fuel: fuelValidator,
   transmission: transmissionValidator,
@@ -286,6 +296,8 @@ export const staffVehicleValidator = v.object({
   year: v.number(),
   trim: v.optional(v.string()),
   priceOmr: v.number(),
+  priceMode: priceModeValidator,
+  financeMonthlyOmr: v.optional(v.number()),
   mileageKm: v.number(),
   fuel: fuelValidator,
   transmission: transmissionValidator,

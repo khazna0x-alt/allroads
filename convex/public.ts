@@ -16,6 +16,7 @@ import {
   transmissionValidator,
 } from "./lib/validators";
 import { isOnPublicFloor } from "./lib/publish";
+import { comparableBuyPrice, resolvePriceMode } from "./lib/pricing";
 import { PUBLIC_FLOOR_STATUSES } from "./lib/vehicleStatus";
 import { matchesPublicFilters, photosForVehicle, toPublicVehicle } from "./lib/vehicles";
 
@@ -70,11 +71,15 @@ async function takeFloorVehicles(ctx: QueryCtx, limit: number) {
 function sortFloorVehicles(vehicles: Doc<"vehicles">[], sort: PublicSort) {
   const copy = [...vehicles];
   copy.sort((left, right) => {
-    if (sort === "price_asc") {
-      return left.priceOmr - right.priceOmr || right._creationTime - left._creationTime;
-    }
-    if (sort === "price_desc") {
-      return right.priceOmr - left.priceOmr || right._creationTime - left._creationTime;
+    if (sort === "price_asc" || sort === "price_desc") {
+      const leftRank = priceSortRank(left);
+      const rightRank = priceSortRank(right);
+      const group = leftRank[0] - rightRank[0];
+      if (group !== 0) {
+        return group;
+      }
+      const delta = sort === "price_asc" ? leftRank[1] - rightRank[1] : rightRank[1] - leftRank[1];
+      return delta || right._creationTime - left._creationTime;
     }
     if (sort === "mileage_asc") {
       return left.mileageKm - right.mileageKm || right._creationTime - left._creationTime;
@@ -84,6 +89,17 @@ function sortFloorVehicles(vehicles: Doc<"vehicles">[], sort: PublicSort) {
     return rightNewest - leftNewest;
   });
   return copy;
+}
+
+function priceSortRank(vehicle: Doc<"vehicles">): [number, number] {
+  const mode = resolvePriceMode(vehicle.priceMode);
+  if (mode === "request") {
+    return [1, 0];
+  }
+  if (mode === "finance") {
+    return [0, vehicle.financeMonthlyOmr ?? 0];
+  }
+  return [0, vehicle.priceOmr];
 }
 
 function uniqueSorted(values: string[]) {
@@ -240,14 +256,19 @@ export const listSimilar = query({
       return [];
     }
 
-    const band = Math.max(vehicle.priceOmr * 0.25, 1000);
+    const band = Math.max((comparableBuyPrice(vehicle) ?? 0) * 0.25, 1000);
     const candidates = (await takeFloorVehicles(ctx, 200))
       .filter((candidate) => candidate._id !== vehicle._id)
       .filter((candidate) => {
         const sameFamily =
           candidate.make.toLowerCase() === vehicle.make.toLowerCase() ||
           candidate.bodyType === vehicle.bodyType;
-        return sameFamily && Math.abs(candidate.priceOmr - vehicle.priceOmr) <= band;
+        const leftPrice = comparableBuyPrice(vehicle);
+        const rightPrice = comparableBuyPrice(candidate);
+        if (leftPrice === null || rightPrice === null) {
+          return sameFamily;
+        }
+        return sameFamily && Math.abs(rightPrice - leftPrice) <= band;
       })
       .sort((left, right) => {
         const leftMake =
@@ -257,9 +278,10 @@ export const listSimilar = query({
         if (leftMake !== rightMake) {
           return leftMake - rightMake;
         }
+        const base = comparableBuyPrice(vehicle) ?? 0;
         return (
-          Math.abs(left.priceOmr - vehicle.priceOmr) -
-          Math.abs(right.priceOmr - vehicle.priceOmr)
+          Math.abs((comparableBuyPrice(left) ?? base) - base) -
+          Math.abs((comparableBuyPrice(right) ?? base) - base)
         );
       })
       .slice(0, 6);
@@ -349,14 +371,21 @@ export const filterBounds = query({
       };
     }
 
-    let minPrice = first.priceOmr;
-    let maxPrice = first.priceOmr;
+    const priced = vehicles
+      .map((vehicle) => comparableBuyPrice(vehicle))
+      .filter((price): price is number => price !== null);
+    const firstPrice = priced[0] ?? 0;
+    let minPrice = firstPrice;
+    let maxPrice = firstPrice;
     let minYear = first.year;
     let maxYear = first.year;
     let maxMileage = first.mileageKm;
     for (const vehicle of vehicles) {
-      minPrice = Math.min(minPrice, vehicle.priceOmr);
-      maxPrice = Math.max(maxPrice, vehicle.priceOmr);
+      const buyPrice = comparableBuyPrice(vehicle);
+      if (buyPrice !== null) {
+        minPrice = Math.min(minPrice, buyPrice);
+        maxPrice = Math.max(maxPrice, buyPrice);
+      }
       minYear = Math.min(minYear, vehicle.year);
       maxYear = Math.max(maxYear, vehicle.year);
       maxMileage = Math.max(maxMileage, vehicle.mileageKm);

@@ -18,6 +18,7 @@ import {
   paymentForBooking,
 } from "./lib/bookings";
 import { isOnPublicFloor } from "./lib/publish";
+import { canBookPricedVehicle } from "./lib/pricing";
 import {
   bookingDurationDaysValidator,
   bookingStatusValidator,
@@ -168,6 +169,9 @@ export const createBooking = mutation({
     }
     if (!isBookableStatus(vehicle.status)) {
       throw new ConvexError("This car is already reserved or booked");
+    }
+    if (!canBookPricedVehicle(vehicle)) {
+      throw new ConvexError("This car is listed for inquiry, not a fixed-price booking");
     }
 
     const existing = await findActiveBooking(ctx, args.vehicleId);

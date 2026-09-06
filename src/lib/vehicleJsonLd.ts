@@ -9,6 +9,8 @@ type PublicVehicle = {
   model: string;
   year: number;
   priceOmr: number;
+  priceMode?: "buy" | "request" | "finance";
+  financeMonthlyOmr?: number;
   mileageKm: number;
   fuel: string;
   transmission: string;
@@ -39,6 +41,23 @@ const AVAILABILITY: Record<PublicVehicle["status"], string> = {
   booked: "https://schema.org/PreOrder",
 };
 
+function offerSeller(locale: string) {
+  return {
+    "@type": "AutoDealer",
+    name: locale === "ar" ? brand.legalAr : brand.legalEn,
+    telephone: brand.phoneE164,
+    email: brand.email,
+    url: absoluteUrl(locale, "/"),
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: locale === "ar" ? brand.locationAr : brand.locationEn,
+      addressLocality: "Al Amerat",
+      addressRegion: "Muscat Governorate",
+      addressCountry: "OM",
+    },
+  };
+}
+
 export function vehicleJsonLd(vehicle: PublicVehicle, locale: string): Record<string, unknown> {
   const name = locale === "ar" ? vehicle.titleAr : vehicle.titleEn;
   const description = (locale === "ar" ? vehicle.descriptionAr : vehicle.descriptionEn).trim();
@@ -67,31 +86,32 @@ export function vehicleJsonLd(vehicle: PublicVehicle, locale: string): Record<st
     vehicleConfiguration: vehicle.spec === "gcc" ? "GCC" : vehicle.spec,
     image: images,
     description: description || name,
-    offers: {
-      "@type": "Offer",
-      url,
-      priceCurrency: "OMR",
-      price: vehicle.priceOmr,
-      availability: AVAILABILITY[vehicle.status],
-      itemCondition:
-        vehicle.condition === "new"
-          ? "https://schema.org/NewCondition"
-          : "https://schema.org/UsedCondition",
-      seller: {
-        "@type": "AutoDealer",
-        name: locale === "ar" ? brand.legalAr : brand.legalEn,
-        telephone: brand.phoneE164,
-        email: brand.email,
-        url: absoluteUrl(locale, "/"),
-        address: {
-          "@type": "PostalAddress",
-          streetAddress: locale === "ar" ? brand.locationAr : brand.locationEn,
-          addressLocality: "Al Amerat",
-          addressRegion: "Muscat Governorate",
-          addressCountry: "OM",
-        },
-      },
-    },
+    offers:
+      vehicle.priceMode === "request"
+        ? {
+            "@type": "Offer",
+            url,
+            availability: AVAILABILITY[vehicle.status],
+            itemCondition:
+              vehicle.condition === "new"
+                ? "https://schema.org/NewCondition"
+                : "https://schema.org/UsedCondition",
+            seller: offerSeller(locale),
+          }
+        : {
+            "@type": "Offer",
+            url,
+            priceCurrency: "OMR",
+            price:
+              vehicle.priceMode === "finance" ? vehicle.financeMonthlyOmr ?? 0 : vehicle.priceOmr,
+            ...(vehicle.priceMode === "finance" ? { unitText: "MONTH" } : {}),
+            availability: AVAILABILITY[vehicle.status],
+            itemCondition:
+              vehicle.condition === "new"
+                ? "https://schema.org/NewCondition"
+                : "https://schema.org/UsedCondition",
+            seller: offerSeller(locale),
+          },
   };
 }
 
