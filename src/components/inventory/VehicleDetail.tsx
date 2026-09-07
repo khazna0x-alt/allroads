@@ -11,24 +11,34 @@ import { PhotoLightbox } from "@/components/inventory/PhotoLightbox";
 import { VehicleCard } from "@/components/inventory/VehicleCard";
 import { api } from "@/lib/convex";
 import { notFound } from "next/navigation";
+import type { FunctionReturnType } from "convex/server";
 import { cylindersFromEngine, formatDate, formatKm } from "@/lib/format";
 import { formatVehiclePrice } from "@/lib/pricing";
 import { vehiclePublicUrl, whatsappHref } from "@/lib/listing";
 import { useWhatsAppChatUrl } from "@/lib/useWhatsAppChat";
 import { arabicMake } from "@/lib/vehicleCopy";
 
+type PublicVehicle = NonNullable<FunctionReturnType<typeof api.public.getPublishedBySlug>>;
 type FormTab = "inquire" | "book";
 
 function formTabFromHash(hash: string): FormTab {
   return hash === "#book" ? "book" : "inquire";
 }
 
-export function VehicleDetail({ slug }: { slug: string }) {
+export function VehicleDetail({
+  slug,
+  initialVehicle,
+}: {
+  slug: string;
+  initialVehicle: PublicVehicle;
+}) {
   const locale = useLocale();
   const t = useTranslations("Inventory");
-  const vehicle = useQuery(api.public.getPublishedBySlug, { slug });
+  const liveVehicle = useQuery(api.public.getPublishedBySlug, { slug });
+  const vehicle = liveVehicle === undefined ? initialVehicle : liveVehicle;
   const similar = useQuery(api.public.listSimilar, { slug });
   const logWhatsApp = useMutation(api.inquiries.logWhatsAppIntent);
+  const chatUrl = useWhatsAppChatUrl();
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [formTab, setFormTab] = useState<FormTab>("inquire");
 
@@ -64,30 +74,6 @@ export function VehicleDetail({ slug }: { slug: string }) {
     }
   }
 
-  if (vehicle === undefined) {
-    return (
-      <div className="mx-auto max-w-6xl px-4 py-10 sm:px-5 sm:py-16" aria-busy="true">
-        <p className="sr-only">{t("loading")}</p>
-        <div className="inventory-skeleton h-3 w-40" />
-        <div className="inventory-skeleton mt-4 h-10 w-3/4 max-w-xl" />
-        <div className="inventory-skeleton mt-4 h-8 w-40" />
-        <div className="inventory-skeleton mt-8 aspect-[16/10] sm:aspect-[2/1]" />
-        <div className="mt-10 grid gap-10 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="space-y-3">
-            <div className="inventory-skeleton h-4 w-full" />
-            <div className="inventory-skeleton h-4 w-11/12" />
-            <div className="inventory-skeleton h-4 w-4/5" />
-            <div className="mt-8 grid grid-cols-2 gap-3">
-              {Array.from({ length: 8 }, (_, index) => (
-                <div key={index} className="inventory-skeleton h-16" />
-              ))}
-            </div>
-          </div>
-          <div className="inventory-skeleton min-h-64" />
-        </div>
-      </div>
-    );
-  }
   if (vehicle === null) {
     notFound();
   }
@@ -100,7 +86,6 @@ export function VehicleDetail({ slug }: { slug: string }) {
   }));
   const priceLabel = formatVehiclePrice(vehicle, locale, t);
   const listingUrl = vehiclePublicUrl(vehicle.slug, locale);
-  const chatUrl = useWhatsAppChatUrl();
   const whatsapp = whatsappHref(
     t("whatsappMessage", {
       title,

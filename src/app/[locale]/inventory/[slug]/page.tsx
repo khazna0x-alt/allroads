@@ -71,7 +71,7 @@ export default async function VehicleDetailPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdScript(vehicleJsonLd(vehicle, locale)) }}
       />
-      <VehicleDetail slug={slug} />
+      <VehicleDetail slug={slug} initialVehicle={vehicle} />
     </>
   );
 }

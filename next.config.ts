@@ -10,6 +10,10 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "*.convex.cloud",
       },
+      {
+        protocol: "https",
+        hostname: "*.eu-west-1.convex.cloud",
+      },
     ],
   },
   async headers() {
