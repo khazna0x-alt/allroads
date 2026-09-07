@@ -483,7 +483,10 @@
     "receiptOk": "Receipt received. Staff will review it.",
     "receiptError": "Could not upload the receipt. Try a PDF or image under 15 MB.",
     "unavailableTitle": "Not available to book",
-    "unavailable": "This car cannot be booked right now."
+    "unavailable": "This car cannot be booked right now.",
+    "captcha": "Human check: what is {a} + {b}?",
+    "captchaLabel": "Human check",
+    "captchaError": "Incorrect answer, please try again."
   },
   "BookingTerms": {
     "title": "Booking & deposit terms",
@@ -549,7 +552,8 @@
       "bookings": "Bookings",
       "guide": "Desk guide",
       "excel": "Excel",
-      "staff": "Staff"
+      "staff": "Staff",
+      "settings": "Website"
     },
     "roles": {
       "admin": "Admin",
@@ -962,7 +966,6 @@
       "title": "Inquiries",
       "kicker": "Leads",
       "lead": "This screen is for customer requests that need a reply from the showroom team.",
-      "botNote": "Messages arrive here from the website form, WhatsApp, and the website assistant when a customer needs a staff member.\n\nThe website chat and WhatsApp assistant (Wa-Agents) only answer automatically about cars published on the site. If the customer asks for a person, or about a contract, payment, pricing, or a complaint — or the assistant cannot answer — the request is sent here with a handoff reason.\n\nThe assistant's questions and replies are set in the Wa-Agents dashboard. This desk does not change those rules; it is where the team receives, follows up, and closes the request.",
       "handoff": "Bot handoff",
       "vehicle": "Vehicle {stock}",
       "inProgress": "In progress",
@@ -1031,6 +1034,19 @@
       "edit": "Edit details",
       "remove": "Remove"
     },
+    "settings": {
+      "title": "Website",
+      "kicker": "Public site",
+      "lead": "Change numbers shown on the public website.",
+      "whatsappTitle": "WhatsApp",
+      "whatsappLead": "This number is used in the footer, on the contact page, and on car listing buttons.",
+      "whatsappLabel": "WhatsApp number",
+      "whatsappHint": "8-digit Omani mobile",
+      "save": "Save number",
+      "saving": "Saving…",
+      "saved": "Saved. The public site will use this number.",
+      "failed": "Could not save the number."
+    },
     "qr": {
       "kicker": "Listing",
       "title": "Vehicle QR code",
@@ -1055,7 +1071,7 @@
       "rolesTitle": "Who can open what",
       "rolesLead": "Both roles sign in here. The sidebar hides screens the signed-in person cannot use.",
       "rolesAdmin": "Admin",
-      "rolesAdminBody": "Full desk: inventory, listing requests, inquiries, bookings, Excel import/export, staff accounts, and deleting cars.",
+      "rolesAdminBody": "Full desk: inventory, listing requests, inquiries, bookings, Excel import/export, staff accounts, website WhatsApp number, and deleting cars.",
       "rolesEditor": "Editor",
       "rolesEditorBody": "Day-to-day floor work: add and edit cars, inspections, contracts, inquiries, and bookings. No Excel, staff roster, or hard delete.",
       "sections": {

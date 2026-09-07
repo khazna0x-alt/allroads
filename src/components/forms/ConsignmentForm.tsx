@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { FieldLabel } from "@/components/forms/FieldLabel";
 import { FileListField, type ListedFile } from "@/components/forms/FileListField";
+import { useFormChallenge } from "@/components/forms/useFormChallenge";
 import { Link } from "@/i18n/navigation";
 import { api, type Id } from "@/lib/convex";
 import {
@@ -28,12 +29,6 @@ const BODY_TYPES = [
 const MAX_PHOTOS = 12;
 const MAX_DOCS = 8;
 
-function createCaptcha() {
-  const a = Math.floor(Math.random() * 6) + 2;
-  const b = Math.floor(Math.random() * 6) + 1;
-  return { a, b, sum: a + b };
-}
-
 export function ConsignmentForm() {
   const t = useTranslations("Consign");
   const nav = useTranslations("Nav");
@@ -46,10 +41,10 @@ export function ConsignmentForm() {
   const [busy, setBusy] = useState(false);
   const [photos, setPhotos] = useState<ListedFile[]>([]);
   const [docs, setDocs] = useState<ListedFile[]>([]);
-  const [captcha] = useState(createCaptcha);
+  const { challenge, refresh } = useFormChallenge();
 
-  async function uploadFile(file: File): Promise<Id<"_storage">> {
-    const postUrl = await generateUploadUrl();
+  async function uploadFile(file: File, ownerPhone: string): Promise<Id<"_storage">> {
+    const postUrl = await generateUploadUrl({ ownerPhone });
     const result = await fetch(postUrl, {
       method: "POST",
       headers: { "Content-Type": contentTypeForFile(file) },
@@ -64,9 +59,10 @@ export function ConsignmentForm() {
 
   async function onSubmit(formData: FormData) {
     const answer = Number(formData.get("captcha"));
-    if (!captcha || answer !== captcha.sum) {
+    if (!challenge || answer !== challenge.a + challenge.b) {
       setStatus("error");
       setError(t("captchaError"));
+      void refresh();
       return;
     }
     if (formData.get("acceptedTerms") !== "on") {
@@ -97,21 +93,22 @@ export function ConsignmentForm() {
         }
       }
 
+      const ownerPhone = String(formData.get("ownerPhone") ?? "");
       const photoStorageIds: Id<"_storage">[] = [];
       for (const photo of photoFiles) {
-        photoStorageIds.push(await uploadFile(photo));
+        photoStorageIds.push(await uploadFile(photo, ownerPhone));
       }
       const ownershipDocs: Array<{ storageId: Id<"_storage">; fileName: string }> = [];
       for (const doc of docFiles) {
         ownershipDocs.push({
-          storageId: await uploadFile(doc),
+          storageId: await uploadFile(doc, ownerPhone),
           fileName: doc.name,
         });
       }
 
       const result = await submit({
         ownerName: String(formData.get("ownerName") ?? ""),
-        ownerPhone: String(formData.get("ownerPhone") ?? ""),
+        ownerPhone,
         message: String(formData.get("notes") ?? ""),
         locale: locale === "ar" ? "ar" : "en",
         make: String(formData.get("make") ?? ""),
@@ -126,12 +123,15 @@ export function ConsignmentForm() {
         acceptedTerms: true,
         photoStorageIds,
         ownershipDocs,
+        challengeId: challenge.challengeId,
+        challengeAnswer: answer,
       });
       setStockCode(result.stockCode);
       setStatus("ok");
     } catch (err) {
       setStatus("error");
       setError(err instanceof Error ? err.message : "Error");
+      void refresh();
     } finally {
       setBusy(false);
     }
@@ -150,7 +150,15 @@ export function ConsignmentForm() {
   }
 
   return (
-    <form action={onSubmit} className="grid min-w-0 gap-4 md:grid-cols-2">
+    <form
+      action={onSubmit}
+      onFocus={() => {
+        if (!challenge) {
+          void refresh();
+        }
+      }}
+      className="grid min-w-0 gap-4 md:grid-cols-2"
+    >
       <Input label={t("ownerName")} name="ownerName" required autoComplete="name" />
       <Input label={t("ownerPhone")} name="ownerPhone" required autoComplete="tel" />
       <Input label={t("make")} name="make" required />
@@ -198,7 +206,7 @@ export function ConsignmentForm() {
         countLabel={t("fileCount", { count: docs.length, max: MAX_DOCS })}
       />
       <Input
-        label={captcha ? t("captcha", { a: captcha.a, b: captcha.b }) : t("captchaLabel")}
+        label={challenge ? t("captcha", { a: challenge.a, b: challenge.b }) : t("captchaLabel")}
         name="captcha"
         required
         className="md:col-span-2"
@@ -214,7 +222,7 @@ export function ConsignmentForm() {
         </span>
       </label>
       {error ? <p className="md:col-span-2 text-sm text-red-400">{error}</p> : null}
-      <button type="submit" disabled={busy || !captcha} className="btn-primary md:col-span-2 disabled:opacity-60">
+      <button type="submit" disabled={busy || !challenge} className="btn-primary md:col-span-2 disabled:opacity-60">
         {busy ? t("sending") : t("submit")}
       </button>
     </form>

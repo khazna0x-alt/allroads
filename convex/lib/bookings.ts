@@ -5,6 +5,7 @@ import { mapLegacyVehicleStatus } from "./vehicleStatus";
 
 export const BOOKING_DURATION_DAYS = [3, 7, 14] as const;
 export type BookingDurationDays = (typeof BOOKING_DURATION_DAYS)[number];
+export const MAX_ACTIVE_BOOKINGS_PER_PHONE = 2;
 
 export const DAY_MS = 24 * 60 * 60 * 1000;
 export const BOOKING_DEPOSIT_MIN_OMR = 200;
@@ -53,6 +54,23 @@ export async function findActiveBooking(
     }
   }
   return null;
+}
+
+export async function countActiveBookingsForPhone(
+  ctx: QueryCtx | MutationCtx,
+  phone: string,
+): Promise<number> {
+  let total = 0;
+  for (const status of ACTIVE_BOOKING_STATUSES) {
+    const rows = await ctx.db
+      .query("bookings")
+      .withIndex("by_phone_and_status", (q) =>
+        q.eq("customerPhone", phone).eq("status", status),
+      )
+      .take(MAX_ACTIVE_BOOKINGS_PER_PHONE + 1);
+    total += rows.length;
+  }
+  return total;
 }
 
 export async function paymentForBooking(

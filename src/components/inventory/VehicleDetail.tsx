@@ -14,6 +14,7 @@ import { notFound } from "next/navigation";
 import { cylindersFromEngine, formatDate, formatKm } from "@/lib/format";
 import { formatVehiclePrice } from "@/lib/pricing";
 import { vehiclePublicUrl, whatsappHref } from "@/lib/listing";
+import { useWhatsAppChatUrl } from "@/lib/useWhatsAppChat";
 import { arabicMake } from "@/lib/vehicleCopy";
 
 type FormTab = "inquire" | "book";
@@ -99,6 +100,7 @@ export function VehicleDetail({ slug }: { slug: string }) {
   }));
   const priceLabel = formatVehiclePrice(vehicle, locale, t);
   const listingUrl = vehiclePublicUrl(vehicle.slug, locale);
+  const chatUrl = useWhatsAppChatUrl();
   const whatsapp = whatsappHref(
     t("whatsappMessage", {
       title,
@@ -107,6 +109,7 @@ export function VehicleDetail({ slug }: { slug: string }) {
       price: priceLabel,
       url: listingUrl,
     }),
+    chatUrl,
   );
   const statusKey =
     vehicle.status === "reserved"

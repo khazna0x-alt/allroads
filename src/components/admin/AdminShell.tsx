@@ -100,6 +100,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
       { href: "/admin/bookings", label: t("nav.bookings") },
       { href: "/admin/import", label: t("nav.excel") },
       { href: "/admin/staff", label: t("nav.staff") },
+      { href: "/admin/settings", label: t("nav.settings") },
     ],
     me.role,
   );

@@ -17,4 +17,11 @@ crons.interval(
   {},
 );
 
+crons.interval(
+  "form challenge sweep",
+  { hours: 1 },
+  internal.challenges.sweepExpired,
+  {},
+);
+
 export default crons;

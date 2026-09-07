@@ -9,14 +9,18 @@ import { authedMutation, authedQuery } from "./lib/customFunctions";
 import { normalizeOmaniPhone } from "./lib/identifiers";
 import {
   assertDurationDays,
+  countActiveBookingsForPhone,
   DAY_MS,
   depositOmrForPrice,
   findActiveBooking,
   isBookableStatus,
+  MAX_ACTIVE_BOOKINGS_PER_PHONE,
   nextBookingNumber,
   normalizeOptionalEmail,
   paymentForBooking,
 } from "./lib/bookings";
+import { consumeFormChallenge } from "./lib/formChallenge";
+import { consumeRateLimit, HOUR_MS } from "./lib/rateLimit";
 import { isOnPublicFloor } from "./lib/publish";
 import { canBookPricedVehicle } from "./lib/pricing";
 import {
@@ -144,6 +148,8 @@ export const createBooking = mutation({
     notes: v.optional(v.string()),
     acceptedTerms: v.boolean(),
     locale: localeValidator,
+    challengeId: v.id("formChallenges"),
+    challengeAnswer: v.number(),
   },
   returns: v.object({
     bookingId: v.id("bookings"),
@@ -160,9 +166,16 @@ export const createBooking = mutation({
       throw new ConvexError("Name must be at least 2 characters");
     }
 
+    await consumeFormChallenge(ctx, args.challengeId, args.challengeAnswer);
+
     const durationDays = assertDurationDays(args.durationDays);
     const phone = normalizeOmaniPhone(args.customerPhone);
     const email = normalizeOptionalEmail(args.customerEmail);
+
+    await consumeRateLimit(ctx, `booking:phone:${phone}`, 3, HOUR_MS);
+    await consumeRateLimit(ctx, `booking:vehicle:${args.vehicleId}`, 4, HOUR_MS);
+    await consumeRateLimit(ctx, "booking:global", 40, HOUR_MS);
+
     const vehicle = await ctx.db.get("vehicles", args.vehicleId);
     if (!vehicle || !isOnPublicFloor(vehicle)) {
       throw new ConvexError("Vehicle is not available");
@@ -177,6 +190,11 @@ export const createBooking = mutation({
     const existing = await findActiveBooking(ctx, args.vehicleId);
     if (existing) {
       throw new ConvexError("This car already has an active booking");
+    }
+
+    const openForPhone = await countActiveBookingsForPhone(ctx, phone);
+    if (openForPhone >= MAX_ACTIVE_BOOKINGS_PER_PHONE) {
+      throw new ConvexError("This phone already has open bookings");
     }
 
     const now = Date.now();
@@ -241,6 +259,29 @@ export const createBooking = mutation({
 });
 
 export const generateReceiptUploadUrl = mutation({
+  args: {
+    bookingNumber: v.string(),
+    phone: v.string(),
+  },
+  returns: v.string(),
+  handler: async (ctx, args) => {
+    const phone = normalizeOmaniPhone(args.phone);
+    await consumeRateLimit(ctx, `receipt:${phone}`, 8, HOUR_MS);
+    const booking = await ctx.db
+      .query("bookings")
+      .withIndex("by_booking_number", (q) => q.eq("bookingNumber", args.bookingNumber.trim()))
+      .unique();
+    if (!booking || booking.customerPhone !== phone) {
+      throw new ConvexError("Booking not found");
+    }
+    if (booking.status === "cancelled" || booking.status === "expired") {
+      throw new ConvexError("This booking is no longer active");
+    }
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+export const generateReceiptUploadUrlStaff = authedMutation({
   args: {},
   returns: v.string(),
   handler: async (ctx) => {

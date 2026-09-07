@@ -236,9 +236,28 @@ export default defineSchema({
     .index("by_booking_number", ["bookingNumber"])
     .index("by_vehicle", ["vehicleId"])
     .index("by_vehicle_and_status", ["vehicleId", "status"])
+    .index("by_phone_and_status", ["customerPhone", "status"])
     .index("by_status", ["status"])
     .index("by_status_and_ends_at", ["status", "endsAt"])
     .index("by_created", ["createdAt"]),
+
+  rateLimits: defineTable({
+    key: v.string(),
+    windowStart: v.number(),
+    count: v.number(),
+  }).index("by_key", ["key"]),
+
+  formChallenges: defineTable({
+    sum: v.number(),
+    expiresAt: v.number(),
+    consumed: v.boolean(),
+  }).index("by_expires_at", ["expiresAt"]),
+
+  siteSettings: defineTable({
+    key: v.string(),
+    whatsappPhone: v.string(),
+    updatedAt: v.number(),
+  }).index("by_key", ["key"]),
 
   payments: defineTable({
     bookingId: v.id("bookings"),

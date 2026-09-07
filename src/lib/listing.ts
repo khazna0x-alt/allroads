@@ -10,8 +10,8 @@ export function vehiclePublicUrl(slug: string, locale: string): string {
   return `${site}${vehiclePublicPath(slug, locale)}`;
 }
 
-export function whatsappHref(text: string): string {
-  const url = new URL(brand.whatsapp);
+export function whatsappHref(text: string, chatUrl: string = brand.whatsapp): string {
+  const url = new URL(chatUrl);
   url.searchParams.set("text", text);
   return url.toString();
 }

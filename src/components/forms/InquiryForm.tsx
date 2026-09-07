@@ -4,17 +4,12 @@ import { useMutation, useQuery } from "convex/react";
 import { useLocale, useTranslations } from "next-intl";
 import { useState, useSyncExternalStore } from "react";
 import { FieldLabel } from "@/components/forms/FieldLabel";
+import { useFormChallenge } from "@/components/forms/useFormChallenge";
 import { Link } from "@/i18n/navigation";
 import { inquirySubjects, type InquirySubjectValue } from "@/lib/brand";
 import { api, type Id } from "@/lib/convex";
 
 const PRESETS = ["available", "deposit", "book", "financing"] as const;
-
-function createCaptcha() {
-  const a = Math.floor(Math.random() * 6) + 2;
-  const b = Math.floor(Math.random() * 6) + 1;
-  return { a, b, sum: a + b };
-}
 
 function subscribeViewingHash(onStoreChange: () => void) {
   window.addEventListener("hashchange", onStoreChange);
@@ -44,7 +39,7 @@ export function InquiryForm({
   const nav = useTranslations("Nav");
   const locale = useLocale();
   const createInquiry = useMutation(api.inquiries.createInquiry);
-  const [captcha] = useState(createCaptcha);
+  const { challenge, refresh } = useFormChallenge();
   const [status, setStatus] = useState<"idle" | "ok" | "error">("idle");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -72,9 +67,10 @@ export function InquiryForm({
 
   async function onSubmit(formData: FormData) {
     const answer = Number(formData.get("captcha"));
-    if (!captcha || answer !== captcha.sum) {
+    if (!challenge || answer !== challenge.a + challenge.b) {
       setStatus("error");
       setError(t("captchaError"));
+      void refresh();
       return;
     }
 
@@ -113,12 +109,15 @@ export function InquiryForm({
         source: "web_form",
         preferredContact,
         viewingRequested: viewing,
+        challengeId: challenge.challengeId,
+        challengeAnswer: answer,
       });
       setStatus("ok");
       setError("");
     } catch (err) {
       setStatus("error");
       setError(err instanceof Error ? err.message : "Error");
+      void refresh();
     }
   }
 
@@ -134,7 +133,15 @@ export function InquiryForm({
   }
 
   return (
-    <form action={onSubmit} className="min-w-0 space-y-4">
+    <form
+      action={onSubmit}
+      onFocus={() => {
+        if (!challenge) {
+          void refresh();
+        }
+      }}
+      className="min-w-0 space-y-4"
+    >
       {stockCode ? (
         <div className="border border-[var(--line)] bg-[var(--ink)] px-3 py-2 text-sm">
           <p className="text-[11px] tracking-[0.18em] text-[var(--ivory-dim)] uppercase">
@@ -277,14 +284,14 @@ export function InquiryForm({
         </label>
       ) : null}
       <Field
-        label={captcha ? t("captcha", { a: captcha.a, b: captcha.b }) : t("captchaLabel")}
+        label={challenge ? t("captcha", { a: challenge.a, b: challenge.b }) : t("captchaLabel")}
         name="captcha"
         required
       />
       {error ? <p className="text-sm text-red-400">{error}</p> : null}
       <button
         type="submit"
-        disabled={!captcha || (showCarPicker && cars === undefined)}
+        disabled={!challenge || (showCarPicker && cars === undefined)}
         className="btn-primary w-full disabled:opacity-60"
       >
         {t("send")}

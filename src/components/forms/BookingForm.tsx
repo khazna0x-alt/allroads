@@ -4,6 +4,7 @@ import { useMutation } from "convex/react";
 import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { FieldLabel } from "@/components/forms/FieldLabel";
+import { useFormChallenge } from "@/components/forms/useFormChallenge";
 import { Link } from "@/i18n/navigation";
 import {
   contentTypeForFile,
@@ -36,6 +37,7 @@ export function BookingForm({
   const createBooking = useMutation(api.bookings.createBooking);
   const generateUploadUrl = useMutation(api.bookings.generateReceiptUploadUrl);
   const attachReceipt = useMutation(api.bookings.attachReceipt);
+  const { challenge, refresh } = useFormChallenge();
   const [status, setStatus] = useState<"idle" | "ok" | "error">("idle");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -52,6 +54,13 @@ export function BookingForm({
       setError(t("termsRequired"));
       return;
     }
+    const answer = Number(formData.get("captcha"));
+    if (!challenge || answer !== challenge.a + challenge.b) {
+      setStatus("error");
+      setError(t("captchaError"));
+      void refresh();
+      return;
+    }
 
     setBusy(true);
     setError("");
@@ -65,6 +74,8 @@ export function BookingForm({
         notes: String(formData.get("notes") ?? "").trim() || undefined,
         acceptedTerms: true,
         locale: locale === "ar" ? "ar" : "en",
+        challengeId: challenge.challengeId,
+        challengeAnswer: answer,
       });
       setBookingNumber(result.bookingNumber);
       setPhone(String(formData.get("customerPhone") ?? ""));
@@ -72,6 +83,7 @@ export function BookingForm({
     } catch (err) {
       setStatus("error");
       setError(err instanceof Error ? err.message : "Error");
+      void refresh();
     } finally {
       setBusy(false);
     }
@@ -88,7 +100,10 @@ export function BookingForm({
       return;
     }
     try {
-      const postUrl = await generateUploadUrl();
+      const postUrl = await generateUploadUrl({
+        bookingNumber,
+        phone,
+      });
       const uploaded = await fetch(postUrl, {
         method: "POST",
         headers: { "Content-Type": contentTypeForFile(file) },
@@ -145,7 +160,15 @@ export function BookingForm({
   }
 
   return (
-    <form action={onSubmit} className="min-w-0 space-y-4">
+    <form
+      action={onSubmit}
+      onFocus={() => {
+        if (!challenge) {
+          void refresh();
+        }
+      }}
+      className="min-w-0 space-y-4"
+    >
       <div className="border border-[var(--line)] bg-[var(--ink)] px-3 py-2 text-sm">
         <p className="text-[11px] tracking-[0.18em] text-[var(--ivory-dim)] uppercase">{t("stock")}</p>
         <p className="mt-1 break-words text-white">{vehicleTitle}</p>
@@ -201,8 +224,12 @@ export function BookingForm({
           </Link>
         </span>
       </label>
+      <label className="block text-sm">
+        <FieldLabel label={challenge ? t("captcha", { a: challenge.a, b: challenge.b }) : t("captchaLabel")} required />
+        <input name="captcha" required inputMode="numeric" className="field-input" />
+      </label>
       {error ? <p className="text-sm text-red-400">{error}</p> : null}
-      <button type="submit" disabled={busy} className="btn-primary w-full">
+      <button type="submit" disabled={busy || !challenge} className="btn-primary w-full">
         {busy ? t("sending") : t("submit")}
       </button>
     </form>

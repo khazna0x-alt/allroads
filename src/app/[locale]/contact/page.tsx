@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { WhatsAppButton } from "@/components/brand/WhatsAppButton";
+import { SiteWhatsAppButton } from "@/components/brand/SiteWhatsAppButton";
 import { InquiryForm } from "@/components/forms/InquiryForm";
 import { brand } from "@/lib/brand";
 
@@ -65,7 +65,7 @@ export default async function ContactPage({
           <div>
             <p className="text-[var(--sand)]">{t("whatsapp")}</p>
             <div className="mt-2">
-              <WhatsAppButton href={brand.whatsapp} ariaLabel={t("whatsapp")} />
+              <SiteWhatsAppButton ariaLabel={t("whatsapp")} />
             </div>
           </div>
           <div>

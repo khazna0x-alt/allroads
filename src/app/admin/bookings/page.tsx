@@ -34,7 +34,7 @@ export default function BookingsPage() {
   const cancel = useMutation(api.bookings.cancel);
   const extend = useMutation(api.bookings.extend);
   const setPaymentStatus = useMutation(api.bookings.setPaymentStatus);
-  const generateUploadUrl = useMutation(api.bookings.generateReceiptUploadUrl);
+  const generateUploadUrl = useMutation(api.bookings.generateReceiptUploadUrlStaff);
   const attachReceiptStaff = useMutation(api.bookings.attachReceiptStaff);
 
   async function onCancel(bookingId: Id<"bookings">, number: string) {

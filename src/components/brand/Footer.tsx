@@ -2,7 +2,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { brand } from "@/lib/brand";
 import { Mark } from "./Mark";
-import { WhatsAppIcon } from "./WhatsAppButton";
+import { FooterWhatsAppLink } from "./FooterWhatsAppLink";
 
 export async function Footer() {
   const t = await getTranslations("Footer");
@@ -30,16 +30,7 @@ export async function Footer() {
               <InstagramIcon />
               <span className="sr-only">Instagram</span>
             </a>
-            <a
-              href={brand.whatsapp}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={nav("whatsapp")}
-              className="inline-flex size-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-[var(--ivory-dim)] transition-colors hover:border-[var(--crimson)] hover:bg-[var(--crimson)] hover:text-white"
-            >
-              <WhatsAppIcon />
-              <span className="sr-only">{nav("whatsapp")}</span>
-            </a>
+            <FooterWhatsAppLink />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-x-6 text-sm sm:gap-x-10">

@@ -9,6 +9,7 @@ import { api, type Id } from "@/lib/convex";
 import { formatKm } from "@/lib/format";
 import { formatVehiclePrice } from "@/lib/pricing";
 import { vehiclePublicUrl, whatsappHref } from "@/lib/listing";
+import { useWhatsAppChatUrl } from "@/lib/useWhatsAppChat";
 import { arabicMake } from "@/lib/vehicleCopy";
 
 export type PublicVehicleCard = {
@@ -62,6 +63,7 @@ export function VehicleCard({ vehicle }: { vehicle: PublicVehicleCard }) {
   }));
   const priceLabel = formatVehiclePrice(vehicle, locale, t);
   const listingUrl = vehiclePublicUrl(vehicle.slug, locale);
+  const chatUrl = useWhatsAppChatUrl();
   const whatsapp = whatsappHref(
     t("whatsappMessage", {
       title,
@@ -70,6 +72,7 @@ export function VehicleCard({ vehicle }: { vehicle: PublicVehicleCard }) {
       price: priceLabel,
       url: listingUrl,
     }),
+    chatUrl,
   );
 
   return (

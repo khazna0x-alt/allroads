@@ -1,4 +1,4 @@
-export const ADMIN_ONLY_PATHS = ["/admin/staff", "/admin/import"];
+export const ADMIN_ONLY_PATHS = ["/admin/staff", "/admin/import", "/admin/settings"];
 
 export function isAdminOnlyPath(pathname: string): boolean {
   return ADMIN_ONLY_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));

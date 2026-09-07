@@ -51,14 +51,3 @@ export const authedAction = customAction(action, {
     return { ctx, args };
   },
 });
-
-export const adminAction = customAction(action, {
-  args: {},
-  input: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new ConvexError("Not authenticated");
-    }
-    return { ctx, args };
-  },
-});

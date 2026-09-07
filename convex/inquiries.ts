@@ -8,6 +8,8 @@ import { assertContractUpload, sanitizeContractFileName } from "./lib/contracts"
 import { authedMutation, authedQuery } from "./lib/customFunctions";
 import { normalizeOmaniPhone } from "./lib/identifiers";
 import { normalizeOptionalEmail } from "./lib/bookings";
+import { consumeFormChallenge } from "./lib/formChallenge";
+import { consumeRateLimit, DAY_MS, HOUR_MS } from "./lib/rateLimit";
 import { isOnPublicFloor } from "./lib/publish";
 import {
   MAX_CONSIGNMENT_PHOTOS,
@@ -131,6 +133,8 @@ export const createInquiry = mutation({
     source: v.optional(inquirySourceValidator),
     preferredContact: v.optional(preferredContactValidator),
     viewingRequested: v.optional(v.boolean()),
+    challengeId: v.id("formChallenges"),
+    challengeAnswer: v.number(),
   },
   returns: v.object({
     inquiryId: v.id("inquiries"),
@@ -149,7 +153,11 @@ export const createInquiry = mutation({
       throw new ConvexError("Message is too short");
     }
 
+    await consumeFormChallenge(ctx, args.challengeId, args.challengeAnswer);
+
     const phone = normalizeOmaniPhone(args.phone);
+    await consumeRateLimit(ctx, `inquiry:phone:${phone}`, 5, HOUR_MS);
+    await consumeRateLimit(ctx, "inquiry:global", 80, HOUR_MS);
     const email = normalizeOptionalEmail(args.email);
     const preferredContact = args.preferredContact ?? "phone";
     if (preferredContact === "email" && !email) {
@@ -220,6 +228,8 @@ export const logWhatsAppIntent = mutation({
     if (!vehicle || !isOnPublicFloor(vehicle)) {
       throw new ConvexError("Vehicle is not available");
     }
+    await consumeRateLimit(ctx, `whatsapp:${args.vehicleId}`, 8, HOUR_MS);
+    await consumeRateLimit(ctx, "whatsapp:global", 80, HOUR_MS);
     await logAudit(ctx, {
       vehicleId: args.vehicleId,
       editType: "whatsapp_intent",
@@ -322,9 +332,14 @@ export const createFromWaAgents = internalMutation({
 });
 
 export const generateConsignmentUploadUrl = mutation({
-  args: {},
+  args: {
+    ownerPhone: v.string(),
+  },
   returns: v.string(),
-  handler: async (ctx) => {
+  handler: async (ctx, args) => {
+    const phone = normalizeOmaniPhone(args.ownerPhone);
+    await consumeRateLimit(ctx, `consign-upload:${phone}`, 24, HOUR_MS);
+    await consumeRateLimit(ctx, "consign-upload:global", 80, HOUR_MS);
     return await ctx.storage.generateUploadUrl();
   },
 });
@@ -358,6 +373,8 @@ export const submitConsignment = mutation({
         }),
       ),
     ),
+    challengeId: v.id("formChallenges"),
+    challengeAnswer: v.number(),
   },
   returns: v.object({
     vehicleId: v.id("vehicles"),
@@ -371,6 +388,11 @@ export const submitConsignment = mutation({
     if (args.ownerName.trim().length < 2) {
       throw new ConvexError("Name must be at least 2 characters");
     }
+
+    await consumeFormChallenge(ctx, args.challengeId, args.challengeAnswer);
+    const ownerPhone = normalizeOmaniPhone(args.ownerPhone);
+    await consumeRateLimit(ctx, `consign:phone:${ownerPhone}`, 3, DAY_MS);
+    await consumeRateLimit(ctx, "consign:global", 20, HOUR_MS);
     if (args.make.trim().length < 2 || args.model.trim().length < 1) {
       throw new ConvexError("Make and model are required");
     }
@@ -396,7 +418,6 @@ export const submitConsignment = mutation({
       throw new ConvexError("Too many ownership documents");
     }
 
-    const ownerPhone = normalizeOmaniPhone(args.ownerPhone);
     const vin = args.vin?.trim() || undefined;
     const now = Date.now();
     const stockCode = await nextStockCode(ctx);
