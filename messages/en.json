@@ -667,7 +667,6 @@
       "inquiriesViewAll": "Open inquiries",
       "attentionKicker": "Needs a decision",
       "attention": "{queue} listing requests in the queue · {leads} new leads",
-      "attentionHint": "Clear the queue and call the names before the floor goes quiet.",
       "workingLeads": "{count} being handled",
       "charts": {
         "floorValue": "Buy-price stock",
@@ -693,9 +692,7 @@
         "sourcesTitle": "Lead sources",
         "sourcesHint": "Where inquiries arrived",
         "inquiries30d": "Inquiries · 30 days",
-        "inquiries30dHint": "Leads opened this month",
-        "bookings30d": "Bookings · 30 days",
-        "bookings30dHint": "Holds opened this month"
+        "inquiries30dHint": "Leads opened this month"
       }
     },
     "inventory": {
@@ -1137,7 +1134,7 @@
         },
         "inquiries": {
           "title": "Inquiries",
-          "lead": "Website, WhatsApp, and assistant handoffs land here. Every inquiry is also added as a task in Wa-Agents.",
+          "lead": "Inquiries are added as tasks in Wa-Agents.",
           "step1Title": "A task is created in Wa-Agents",
           "step1Body": "Each new inquiry — website form, WhatsApp, or assistant handoff — creates a Wa-Agents task with the name, phone, and message. Open Tasks in Wa-Agents to work it.",
           "step2Title": "Call or WhatsApp",
