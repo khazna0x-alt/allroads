@@ -19,11 +19,14 @@ const nextConfig: NextConfig = {
   async headers() {
     const contentSecurityPolicy = [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://api.youraiconnector.com https://app.waagents.ai",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https://*.convex.cloud https://*.eu-west-1.convex.cloud",
-      "font-src 'self' data:",
-      "connect-src 'self' https://*.convex.cloud wss://*.convex.cloud https://*.eu-west-1.convex.cloud wss://*.eu-west-1.convex.cloud https://*.convex.site",
+      "img-src 'self' data: blob: https://*.convex.cloud https://*.eu-west-1.convex.cloud https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.googleusercontent.com https://api.youraiconnector.com https://app.waagents.ai",
+      "font-src 'self' data: https://fonts.gstatic.com",
+      "connect-src 'self' https://*.convex.cloud wss://*.convex.cloud https://*.eu-west-1.convex.cloud wss://*.eu-west-1.convex.cloud https://*.convex.site https://api.youraiconnector.com wss://api.youraiconnector.com https://*.youraiconnector.com wss://*.youraiconnector.com https://app.waagents.ai wss://app.waagents.ai https://*.waagents.ai",
+      "frame-src https://www.google.com https://maps.google.com https://www.google.com/maps https://api.youraiconnector.com https://app.waagents.ai",
+      "media-src 'self' data: blob: https://api.youraiconnector.com",
+      "worker-src 'self' blob:",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",
