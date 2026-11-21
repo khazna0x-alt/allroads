@@ -1,47 +1,29 @@
 import { fetchQuery } from "convex/nextjs";
 import { NextResponse } from "next/server";
 import { api } from "@/lib/convex";
+import { inventoryByStockCodeResponse, resolveStockCode, toInventoryVehicle } from "@/lib/inventoryApi";
 
 export const dynamic = "force-dynamic";
 
-/** Published-only inventory feed for the website chat / Wa-Agents. Do not add unpublished, reserved, or booked cars. */
-export async function GET() {
+/**
+ * Published inventory feed, or one car when `stockCode` is a query parameter.
+ * DM Champ custom functions send GET inputs as `?stockCode=`, not as a `{stockCode}` path.
+ */
+export async function GET(request: Request) {
+  const stockCode = resolveStockCode(request);
+  if (stockCode) {
+    return inventoryByStockCodeResponse(stockCode);
+  }
+
   const vehicles = (await fetchQuery(api.public.listPublishedFeed, {})).filter(
     (vehicle) => vehicle.status === "published",
   );
-  const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://allroads.om";
 
   return NextResponse.json(
     {
       generatedAt: new Date().toISOString(),
       count: vehicles.length,
-      vehicles: vehicles.map((vehicle) => ({
-        stockCode: vehicle.stockCode,
-        slug: vehicle.slug,
-        url: `${site}/inventory/${vehicle.slug}`,
-        status: vehicle.status,
-        titleEn: vehicle.titleEn,
-        titleAr: vehicle.titleAr,
-        make: vehicle.make,
-        model: vehicle.model,
-        year: vehicle.year,
-        trim: vehicle.trim ?? null,
-        priceOmr: vehicle.priceOmr,
-        priceMode: vehicle.priceMode,
-        financeMonthlyOmr: vehicle.financeMonthlyOmr ?? null,
-        mileageKm: vehicle.mileageKm,
-        fuel: vehicle.fuel,
-        transmission: vehicle.transmission,
-        drivetrain: vehicle.drivetrain,
-        spec: vehicle.spec,
-        condition: vehicle.condition,
-        bodyType: vehicle.bodyType,
-        exteriorColor: vehicle.exteriorColor,
-        interiorColor: vehicle.interiorColor,
-        engine: vehicle.engine ?? null,
-        features: vehicle.features,
-        photos: vehicle.photos.map((photo) => photo.url),
-      })),
+      vehicles: vehicles.map((vehicle) => toInventoryVehicle(vehicle)),
     },
     {
       headers: {
